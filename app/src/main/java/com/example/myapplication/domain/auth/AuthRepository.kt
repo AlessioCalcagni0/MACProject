@@ -1,9 +1,11 @@
 package com.example.myapplication.domain.auth
 
+import android.content.Context
+
 interface AuthRepository {
-    fun login(email: String, password: String): Boolean
-    fun register(name: String, email: String, password: String): Boolean
-    fun signInWithGoogle(): Boolean
+    suspend fun login(email: String, password: String): Boolean
+    suspend fun register(name: String, email: String, password: String): Boolean
+    suspend fun signInWithGoogle(context: Context): Boolean
     fun isUserLoggedIn(): Boolean
     fun logout()
 }

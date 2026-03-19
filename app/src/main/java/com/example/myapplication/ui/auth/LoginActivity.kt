@@ -7,10 +7,12 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import com.example.myapplication.R
 import com.example.myapplication.data.auth.AuthRepositoryImpl
 import com.example.myapplication.domain.auth.LoginUseCase
 import com.example.myapplication.ui.home.MainActivity
+import kotlinx.coroutines.launch
 
 class LoginActivity : AppCompatActivity() {
 
@@ -61,14 +63,16 @@ class LoginActivity : AppCompatActivity() {
             }
 
             else -> {
-                val success = loginUseCase(email, password)
+                lifecycleScope.launch {
+                    val success = loginUseCase(email, password)
 
-                if (success) {
-                    Toast.makeText(this, "Login effettuato", Toast.LENGTH_SHORT).show()
-                    startActivity(Intent(this, MainActivity::class.java))
-                    finish()
-                } else {
-                    Toast.makeText(this, "Errore nel login", Toast.LENGTH_SHORT).show()
+                    if (success) {
+                        Toast.makeText(this@LoginActivity, "Login effettuato", Toast.LENGTH_SHORT).show()
+                        startActivity(Intent(this@LoginActivity, MainActivity::class.java))
+                        finish()
+                    } else {
+                        Toast.makeText(this@LoginActivity, "Errore nel login", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
         }

@@ -7,10 +7,12 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import com.example.myapplication.R
 import com.example.myapplication.data.auth.AuthRepositoryImpl
 import com.example.myapplication.domain.auth.RegisterUseCase
 import com.example.myapplication.ui.home.MainActivity
+import kotlinx.coroutines.launch
 
 class RegisterActivity : AppCompatActivity() {
 
@@ -88,14 +90,16 @@ class RegisterActivity : AppCompatActivity() {
             }
 
             else -> {
-                val success = registerUseCase(name, email, password)
+                lifecycleScope.launch {
+                    val success = registerUseCase(name, email, password)
 
-                if (success) {
-                    Toast.makeText(this, "Registrazione completata", Toast.LENGTH_SHORT).show()
-                    startActivity(Intent(this, MainActivity::class.java))
-                    finish()
-                } else {
-                    Toast.makeText(this, "Errore nella registrazione", Toast.LENGTH_SHORT).show()
+                    if (success) {
+                        Toast.makeText(this@RegisterActivity, "Registrazione completata", Toast.LENGTH_SHORT).show()
+                        startActivity(Intent(this@RegisterActivity, MainActivity::class.java))
+                        finish()
+                    } else {
+                        Toast.makeText(this@RegisterActivity, "Errore nella registrazione", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
         }

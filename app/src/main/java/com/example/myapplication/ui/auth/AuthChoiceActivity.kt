@@ -5,10 +5,12 @@ import android.os.Bundle
 import android.widget.Button
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import com.example.myapplication.R
 import com.example.myapplication.data.auth.AuthRepositoryImpl
 import com.example.myapplication.domain.auth.SignInWithGoogleUseCase
 import com.example.myapplication.ui.home.MainActivity
+import kotlinx.coroutines.launch
 
 class AuthChoiceActivity : AppCompatActivity() {
 
@@ -36,14 +38,16 @@ class AuthChoiceActivity : AppCompatActivity() {
         }
 
         btnGoogle.setOnClickListener {
-            val success = signInWithGoogleUseCase()
+            lifecycleScope.launch {
+                val success = signInWithGoogleUseCase(this@AuthChoiceActivity)
 
-            if (success) {
-                Toast.makeText(this, "Accesso con Google effettuato", Toast.LENGTH_SHORT).show()
-                startActivity(Intent(this, MainActivity::class.java))
-                finish()
-            } else {
-                Toast.makeText(this, "Errore accesso Google", Toast.LENGTH_SHORT).show()
+                if (success) {
+                    Toast.makeText(this@AuthChoiceActivity, "Accesso con Google effettuato", Toast.LENGTH_SHORT).show()
+                    startActivity(Intent(this@AuthChoiceActivity, MainActivity::class.java))
+                    finish()
+                } else {
+                    Toast.makeText(this@AuthChoiceActivity, "Errore accesso Google", Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }

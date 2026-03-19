@@ -1,19 +1,20 @@
 package com.example.myapplication.data.auth
 
+import android.content.Context
 import com.example.myapplication.domain.auth.AuthRepository
 
 class AuthRepositoryImpl : AuthRepository {
 
-    override fun login(email: String, password: String): Boolean {
+    override suspend fun login(email: String, password: String): Boolean {
         return AuthFirebaseDataSource.login(email, password)
     }
 
-    override fun register(name: String, email: String, password: String): Boolean {
+    override suspend fun register(name: String, email: String, password: String): Boolean {
         return AuthFirebaseDataSource.register(name, email, password)
     }
 
-    override fun signInWithGoogle(): Boolean {
-        return AuthFirebaseDataSource.signInWithGoogle()
+    override suspend fun signInWithGoogle(context: Context): Boolean {
+        return AuthFirebaseDataSource.signInWithGoogle(context)
     }
 
     override fun isUserLoggedIn(): Boolean {
