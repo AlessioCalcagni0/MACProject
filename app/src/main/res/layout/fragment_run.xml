@@ -3,143 +3,214 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F5F5F5">
+    android:background="#FFFFFF">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:padding="20dp">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Sessione di Corsa"
-            android:textSize="22sp"
-            android:textStyle="bold"
-            android:textColor="#333333"
-            android:layout_marginBottom="16dp" />
-
-        <!-- Griglia Statistiche -->
-        <GridLayout
+        <!-- Sezione SETUP OBIETTIVO -->
+        <LinearLayout
+            android:id="@+id/layoutSetupGoal"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:columnCount="2"
-            android:alignmentMode="alignMargins"
-            android:columnOrderPreserved="false">
+            android:orientation="vertical">
 
-            <!-- Card Durata -->
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="0dp"
+            <TextView
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_columnWeight="1"
-                android:layout_margin="8dp"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="4dp">
+                android:text="Inizia Corsa"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:textColor="#000000"
+                android:layout_marginBottom="24dp" />
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp"
-                    android:gravity="center">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Durata"
-                        android:textSize="14sp"
-                        android:textColor="#777777" />
-
-                    <TextView
-                        android:id="@+id/tvDuration"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="00:00:00"
-                        android:textSize="20sp"
-                        android:textStyle="bold"
-                        android:textColor="#6200EE" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- Card Distanza -->
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="0dp"
+            <TextView
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_columnWeight="1"
-                android:layout_margin="8dp"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="4dp">
+                android:text="Seleziona il tuo obiettivo"
+                android:textSize="16sp"
+                android:textColor="#555555"
+                android:layout_marginBottom="12dp" />
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp"
-                    android:gravity="center">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Distanza (km)"
-                        android:textSize="14sp"
-                        android:textColor="#777777" />
-
-                    <TextView
-                        android:id="@+id/tvDistance"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="0.00"
-                        android:textSize="20sp"
-                        android:textStyle="bold"
-                        android:textColor="#6200EE" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- Card Velocità -->
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="0dp"
+            <RadioGroup
+                android:id="@+id/rgGoalType"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_columnWeight="2"
-                android:layout_margin="8dp"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="4dp">
+                android:orientation="vertical"
+                android:layout_marginBottom="20dp">
 
-                <LinearLayout
+                <RadioButton
+                    android:id="@+id/rbTime"
                     android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:text="Obiettivo Tempo"
+                    android:background="@android:drawable/btn_default"
+                    android:button="@null"
+                    android:paddingStart="16dp"
+                    android:layout_marginBottom="8dp" />
+
+                <RadioButton
+                    android:id="@+id/rbDistance"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:text="Obiettivo Distanza"
+                    android:background="@android:drawable/btn_default"
+                    android:button="@null"
+                    android:paddingStart="16dp"
+                    android:layout_marginBottom="8dp" />
+
+                <RadioButton
+                    android:id="@+id/rbCalories"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:text="Obiettivo Calorie"
+                    android:background="@android:drawable/btn_default"
+                    android:button="@null"
+                    android:paddingStart="16dp" />
+            </RadioGroup>
+
+            <LinearLayout
+                android:id="@+id/layoutPickers"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:visibility="gone"
+                android:layout_marginBottom="32dp"
+                android:background="#F9F9F9"
+                android:padding="16dp">
+
+                <NumberPicker
+                    android:id="@+id/pickerValueMain"
+                    android:layout_width="wrap_content"
+                    android:layout_height="120dp" />
+
+                <TextView
+                    android:id="@+id/tvSeparator"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp"
-                    android:gravity="center">
+                    android:text=":"
+                    android:textSize="24sp"
+                    android:layout_marginHorizontal="8dp" />
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Velocità attuale (km/h)"
-                        android:textSize="14sp"
-                        android:textColor="#777777" />
+                <NumberPicker
+                    android:id="@+id/pickerValueSub"
+                    android:layout_width="wrap_content"
+                    android:layout_height="120dp" />
 
-                    <TextView
-                        android:id="@+id/tvSpeed"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="0.0"
-                        android:textSize="24sp"
-                        android:textStyle="bold"
-                        android:textColor="#6200EE" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+                <TextView
+                    android:id="@+id/tvUnit"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="min"
+                    android:textSize="18sp"
+                    android:layout_marginStart="8dp" />
+            </LinearLayout>
 
-        </GridLayout>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnStartRun"
+                android:layout_width="match_parent"
+                android:layout_height="64dp"
+                android:text="INIZIA"
+                android:textSize="18sp"
+                app:cornerRadius="32dp"
+                android:backgroundTint="#6200EE" />
+        </LinearLayout>
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnStartRun"
+        <!-- Sezione STATISTICHE IN CORSA -->
+        <LinearLayout
+            android:id="@+id/layoutRunningStats"
             android:layout_width="match_parent"
-            android:layout_height="60dp"
-            android:layout_marginTop="24dp"
-            android:text="Inizia Corsa"
-            android:textSize="16sp"
-            app:cornerRadius="30dp" />
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/tvCurrentGoalDisplay"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Obiettivo: -"
+                android:textSize="16sp"
+                android:textColor="#6200EE"
+                android:gravity="center"
+                android:layout_marginBottom="8dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="In corsa..."
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="24dp" />
+
+            <GridLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:columnCount="2">
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:layout_margin="8dp"
+                    app:cardCornerRadius="16dp">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="20dp"
+                        android:gravity="center">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Durata" android:textColor="#777" />
+                        <TextView android:id="@+id/tvDuration" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="00:00:00" android:textSize="20sp" android:textStyle="bold" android:textColor="#6200EE" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:layout_margin="8dp"
+                    app:cardCornerRadius="16dp">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="20dp"
+                        android:gravity="center">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Distanza" android:textColor="#777" />
+                        <TextView android:id="@+id/tvDistance" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0.00 km" android:textSize="20sp" android:textStyle="bold" android:textColor="#6200EE" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="2"
+                    android:layout_margin="8dp"
+                    app:cardCornerRadius="16dp">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="20dp"
+                        android:gravity="center">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Velocità" android:textColor="#777" />
+                        <TextView android:id="@+id/tvSpeed" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0.0 km/h" android:textSize="24sp" android:textStyle="bold" android:textColor="#6200EE" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+            </GridLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnStopRun"
+                android:layout_width="match_parent"
+                android:layout_height="64dp"
+                android:layout_marginTop="32dp"
+                android:text="FERMA"
+                android:backgroundTint="@android:color/holo_red_light"
+                app:cornerRadius="32dp" />
+        </LinearLayout>
 
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>
