@@ -3,7 +3,10 @@ package com.example.myapplication.ui.run
 import android.Manifest
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
+import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
 import android.location.Location
 import android.os.Bundle
@@ -19,11 +22,15 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.example.myapplication.R
 import com.google.android.gms.location.*
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.GoogleMap
+import com.google.android.gms.maps.MapView
+import com.google.android.gms.maps.OnMapReadyCallback
+import com.google.android.gms.maps.model.*
 import com.google.android.material.button.MaterialButton
-import com.google.android.material.textfield.TextInputLayout
 import java.util.Locale
 
-class RunFragment : Fragment() {
+class RunFragment : Fragment(), OnMapReadyCallback {
 
     companion object {
         private const val TAG = "RunFragment"
@@ -46,6 +53,13 @@ class RunFragment : Fragment() {
     private lateinit var tvSpeed: TextView
     private lateinit var tvCurrentGoalDisplay: TextView
     private lateinit var btnStopRun: MaterialButton
+
+    // Mappa
+    private lateinit var mapView: MapView
+    private var googleMap: GoogleMap? = null
+    private var userMarker: Marker? = null
+    private var pathPolyline: Polyline? = null
+    private val pathPoints = mutableListOf<LatLng>()
 
     // Stato corsa
     private var isRunning = false
@@ -111,6 +125,11 @@ class RunFragment : Fragment() {
         tvCurrentGoalDisplay = view.findViewById(R.id.tvCurrentGoalDisplay)
         btnStopRun = view.findViewById(R.id.btnStopRun)
 
+        // Inizializzazione MapView
+        mapView = view.findViewById(R.id.mapView)
+        mapView.onCreate(savedInstanceState)
+        mapView.getMapAsync(this)
+
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
 
         locationCallback = object : LocationCallback() {
@@ -118,6 +137,7 @@ class RunFragment : Fragment() {
                 for (location in locationResult.locations) {
                     if (isRunning) {
                         updateStats(location)
+                        updateMapLocation(location)
                         checkGoalProgress()
                     }
                 }
@@ -138,6 +158,58 @@ class RunFragment : Fragment() {
         btnStopRun.setOnClickListener {
             stopRun()
         }
+    }
+
+    override fun onMapReady(map: GoogleMap) {
+        googleMap = map
+        googleMap?.uiSettings?.isZoomControlsEnabled = true
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            googleMap?.isMyLocationEnabled = true
+        }
+    }
+
+    private fun updateMapLocation(location: Location) {
+        val latLng = LatLng(location.latitude, location.longitude)
+        pathPoints.add(latLng)
+        
+        // Aggiorna il percorso (Polyline)
+        if (pathPolyline == null) {
+            val polylineOptions = PolylineOptions()
+                .addAll(pathPoints)
+                .color(Color.parseColor("#6200EE"))
+                .width(12f)
+                .jointType(JointType.ROUND)
+                .startCap(RoundCap())
+                .endCap(RoundCap())
+            pathPolyline = googleMap?.addPolyline(polylineOptions)
+        } else {
+            pathPolyline?.points = pathPoints
+        }
+
+        // Aggiorna il cursore a freccia
+        if (userMarker == null) {
+            val markerOptions = MarkerOptions()
+                .position(latLng)
+                .rotation(location.bearing)
+                .anchor(0.5f, 0.5f)
+                .flat(true)
+                .icon(getBitmapDescriptorFromVector(requireContext(), R.drawable.ic_navigation_arrow))
+            userMarker = googleMap?.addMarker(markerOptions)
+            googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 17f))
+        } else {
+            userMarker?.position = latLng
+            userMarker?.rotation = location.bearing
+            googleMap?.animateCamera(CameraUpdateFactory.newLatLng(latLng))
+        }
+    }
+
+    private fun getBitmapDescriptorFromVector(context: Context, vectorResId: Int): BitmapDescriptor {
+        val vectorDrawable = ContextCompat.getDrawable(context, vectorResId)
+        vectorDrawable!!.setBounds(0, 0, vectorDrawable.intrinsicWidth, vectorDrawable.intrinsicHeight)
+        val bitmap = Bitmap.createBitmap(vectorDrawable.intrinsicWidth, vectorDrawable.intrinsicHeight, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        vectorDrawable.draw(canvas)
+        return BitmapDescriptorFactory.fromBitmap(bitmap)
     }
 
     private fun setupPickersBase() {
@@ -220,6 +292,10 @@ class RunFragment : Fragment() {
         totalDistance = 0f
         lastLocation = null
         goalReached = false
+        userMarker = null
+        pathPolyline = null
+        pathPoints.clear()
+        googleMap?.clear()
         
         // Reset stile visualizzazione obiettivo
         tvCurrentGoalDisplay.setTextColor(Color.parseColor("#6200EE"))
@@ -310,6 +386,31 @@ class RunFragment : Fragment() {
         val minutes = (seconds % 3600) / 60
         val secs = seconds % 60
         tvDuration.text = String.format(Locale.getDefault(), "%02d:%02d:%02d", hours, minutes, secs)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        mapView.onResume()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        mapView.onPause()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        mapView.onDestroy()
+    }
+
+    override fun onLowMemory() {
+        super.onLowMemory()
+        mapView.onLowMemory()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        mapView.onSaveInstanceState(outState)
     }
 
     override fun onDestroyView() {
