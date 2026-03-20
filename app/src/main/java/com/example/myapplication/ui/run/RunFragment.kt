@@ -4,6 +4,7 @@ import android.Manifest
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -12,6 +13,7 @@ import android.location.Location
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.MediaStore
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -53,6 +55,10 @@ class RunFragment : Fragment(), OnMapReadyCallback {
     private lateinit var tvSpeed: TextView
     private lateinit var tvCurrentGoalDisplay: TextView
     private lateinit var btnStopRun: MaterialButton
+
+    // Views per la foto
+    private lateinit var ivCapturedPhoto: ImageView
+    private lateinit var btnTakePhoto: MaterialButton
 
     // Mappa
     private lateinit var mapView: MapView
@@ -97,6 +103,18 @@ class RunFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
+    private val takePhotoLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK) {
+            val imageBitmap = result.data?.extras?.get("data") as? Bitmap
+            imageBitmap?.let {
+                ivCapturedPhoto.setImageBitmap(it)
+                ivCapturedPhoto.visibility = View.VISIBLE
+            }
+        }
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -124,6 +142,10 @@ class RunFragment : Fragment(), OnMapReadyCallback {
         tvSpeed = view.findViewById(R.id.tvSpeed)
         tvCurrentGoalDisplay = view.findViewById(R.id.tvCurrentGoalDisplay)
         btnStopRun = view.findViewById(R.id.btnStopRun)
+
+        // Inizializzazione views Foto
+        ivCapturedPhoto = view.findViewById(R.id.ivCapturedPhoto)
+        btnTakePhoto = view.findViewById(R.id.btnTakePhoto)
 
         // Inizializzazione MapView
         mapView = view.findViewById(R.id.mapView)
@@ -157,6 +179,15 @@ class RunFragment : Fragment(), OnMapReadyCallback {
 
         btnStopRun.setOnClickListener {
             stopRun()
+        }
+
+        btnTakePhoto.setOnClickListener {
+            val takePictureIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+            try {
+                takePhotoLauncher.launch(takePictureIntent)
+            } catch (e: Exception) {
+                Toast.makeText(context, "Errore fotocamera", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -296,6 +327,10 @@ class RunFragment : Fragment(), OnMapReadyCallback {
         pathPolyline = null
         pathPoints.clear()
         googleMap?.clear()
+        
+        // Reset foto
+        ivCapturedPhoto.visibility = View.GONE
+        ivCapturedPhoto.setImageDrawable(null)
         
         // Reset stile visualizzazione obiettivo
         tvCurrentGoalDisplay.setTextColor(Color.parseColor("#6200EE"))

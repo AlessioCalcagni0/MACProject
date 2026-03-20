@@ -51,6 +51,9 @@ dependencies {
     implementation(libs.play.services.location)
     implementation(libs.play.services.maps)
     
+    // Volley per le chiamate API Meteo
+    implementation("com.android.volley:volley:1.2.1")
+    
     implementation("androidx.appcompat:appcompat:1.7.1")
     implementation("com.google.android.material:material:1.12.0")
     implementation("androidx.constraintlayout:constraintlayout:2.2.0")
