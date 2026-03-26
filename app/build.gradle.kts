@@ -43,17 +43,25 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.firebase.auth)
+    implementation(libs.firebase.database)
+    implementation(libs.firebase.storage)
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services.auth)
     implementation(libs.googleid)
     
-    // Google Play Services per il GPS reale e Mappe
+    // Google Play Services
     implementation(libs.play.services.location)
     implementation(libs.play.services.maps)
     
-    // Volley per le chiamate API Meteo
-    implementation("com.android.volley:volley:1.2.1")
+    // Retrofit
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.gson)
     
+    // Glide per le immagini
+    implementation(libs.glide)
+    annotationProcessor(libs.glide.compiler)
+    
+    implementation("com.android.volley:volley:1.2.1")
     implementation("androidx.appcompat:appcompat:1.7.1")
     implementation("com.google.android.material:material:1.12.0")
     implementation("androidx.constraintlayout:constraintlayout:2.2.0")

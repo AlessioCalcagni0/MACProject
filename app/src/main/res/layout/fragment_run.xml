@@ -33,7 +33,7 @@
                 android:text="Seleziona il tuo obiettivo"
                 android:textSize="16sp"
                 android:textColor="#555555"
-                android:layout_marginBottom="12dp" />
+                android:layout_marginBottom="16dp" />
 
             <RadioGroup
                 android:id="@+id/rgGoalType"
@@ -45,31 +45,49 @@
                 <RadioButton
                     android:id="@+id/rbTime"
                     android:layout_width="match_parent"
-                    android:layout_height="56dp"
+                    android:layout_height="64dp"
                     android:text="Obiettivo Tempo"
-                    android:background="@android:drawable/btn_default"
+                    android:background="@drawable/selector_goal_background"
                     android:button="@null"
-                    android:paddingStart="16dp"
-                    android:layout_marginBottom="8dp" />
+                    android:drawableStart="@drawable/ic_goal_time"
+                    android:drawablePadding="16dp"
+                    android:paddingStart="20dp"
+                    android:paddingEnd="20dp"
+                    android:textColor="@drawable/selector_goal_text_color"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="12dp" />
 
                 <RadioButton
                     android:id="@+id/rbDistance"
                     android:layout_width="match_parent"
-                    android:layout_height="56dp"
+                    android:layout_height="64dp"
                     android:text="Obiettivo Distanza"
-                    android:background="@android:drawable/btn_default"
+                    android:background="@drawable/selector_goal_background"
                     android:button="@null"
-                    android:paddingStart="16dp"
-                    android:layout_marginBottom="8dp" />
+                    android:drawableStart="@drawable/ic_goal_distance"
+                    android:drawablePadding="16dp"
+                    android:paddingStart="20dp"
+                    android:paddingEnd="20dp"
+                    android:textColor="@drawable/selector_goal_text_color"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="12dp" />
 
                 <RadioButton
                     android:id="@+id/rbCalories"
                     android:layout_width="match_parent"
-                    android:layout_height="56dp"
+                    android:layout_height="64dp"
                     android:text="Obiettivo Calorie"
-                    android:background="@android:drawable/btn_default"
+                    android:background="@drawable/selector_goal_background"
                     android:button="@null"
-                    android:paddingStart="16dp" />
+                    android:drawableStart="@drawable/ic_goal_calories"
+                    android:drawablePadding="16dp"
+                    android:paddingStart="20dp"
+                    android:paddingEnd="20dp"
+                    android:textColor="@drawable/selector_goal_text_color"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
             </RadioGroup>
 
             <LinearLayout
@@ -114,8 +132,9 @@
                 android:id="@+id/btnStartRun"
                 android:layout_width="match_parent"
                 android:layout_height="64dp"
-                android:text="INIZIA"
+                android:text="INIZIA CORSA"
                 android:textSize="18sp"
+                android:textStyle="bold"
                 app:cornerRadius="32dp"
                 android:backgroundTint="#6200EE" />
         </LinearLayout>
@@ -128,32 +147,45 @@
             android:orientation="vertical"
             android:visibility="gone">
 
-            <TextView
-                android:id="@+id/tvCurrentGoalDisplay"
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Obiettivo: -"
-                android:textSize="16sp"
-                android:textColor="#6200EE"
-                android:gravity="center"
-                android:layout_marginBottom="8dp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="In corsa..."
-                android:textSize="22sp"
-                android:textStyle="bold"
-                android:layout_marginBottom="16dp" />
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="4dp"
+                app:strokeColor="#6200EE"
+                app:strokeWidth="2dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp"
+                    android:gravity="center">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="OBIETTIVO DA RAGGIUNGERE"
+                        android:textSize="12sp"
+                        android:textColor="#777"
+                        android:textStyle="bold" />
+                    <TextView
+                        android:id="@+id/tvCurrentGoalDisplay"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="-"
+                        android:textSize="24sp"
+                        android:textColor="#6200EE"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
             <!-- MAPPA IN TEMPO REALE -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
-                android:layout_height="300dp"
-                android:layout_marginBottom="16dp"
+                android:layout_height="180dp"
+                android:layout_marginBottom="12dp"
                 app:cardCornerRadius="16dp"
                 app:cardElevation="4dp">
-
                 <com.google.android.gms.maps.MapView
                     android:id="@+id/mapView"
                     android:layout_width="match_parent"
@@ -163,21 +195,23 @@
             <GridLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:columnCount="2">
+                android:columnCount="2"
+                android:layout_marginBottom="8dp">
+
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_columnWeight="1"
-                    android:layout_margin="8dp"
-                    app:cardCornerRadius="16dp">
+                    android:layout_margin="4dp"
+                    app:cardCornerRadius="12dp">
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="20dp"
+                        android:padding="12dp"
                         android:gravity="center">
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Durata" android:textColor="#777" />
-                        <TextView android:id="@+id/tvDuration" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="00:00:00" android:textSize="20sp" android:textStyle="bold" android:textColor="#6200EE" />
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Durata" android:textColor="#777" android:textSize="12sp" />
+                        <TextView android:id="@+id/tvDuration" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="00:00:00" android:textSize="18sp" android:textStyle="bold" android:textColor="#6200EE" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
@@ -185,78 +219,113 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_columnWeight="1"
-                    android:layout_margin="8dp"
-                    app:cardCornerRadius="16dp">
+                    android:layout_margin="4dp"
+                    app:cardCornerRadius="12dp">
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="20dp"
+                        android:padding="12dp"
                         android:gravity="center">
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Distanza" android:textColor="#777" />
-                        <TextView android:id="@+id/tvDistance" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0.00 km" android:textSize="20sp" android:textStyle="bold" android:textColor="#6200EE" />
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Distanza" android:textColor="#777" android:textSize="12sp" />
+                        <TextView android:id="@+id/tvDistance" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0.00 km" android:textSize="18sp" android:textStyle="bold" android:textColor="#6200EE" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_columnWeight="2"
-                    android:layout_margin="8dp"
-                    app:cardCornerRadius="16dp">
+                    android:layout_columnWeight="1"
+                    android:layout_margin="4dp"
+                    app:cardCornerRadius="12dp">
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:padding="20dp"
+                        android:padding="12dp"
                         android:gravity="center">
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Velocità" android:textColor="#777" />
-                        <TextView android:id="@+id/tvSpeed" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0.0 km/h" android:textSize="24sp" android:textStyle="bold" android:textColor="#6200EE" />
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Velocità" android:textColor="#777" android:textSize="12sp" />
+                        <TextView android:id="@+id/tvSpeed" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0.0 km/h" android:textSize="18sp" android:textStyle="bold" android:textColor="#6200EE" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:layout_margin="4dp"
+                    app:cardCornerRadius="12dp">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="12dp"
+                        android:gravity="center">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Calorie" android:textColor="#777" android:textSize="12sp" />
+                        <TextView android:id="@+id/tvCalories" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0 kcal" android:textSize="18sp" android:textStyle="bold" android:textColor="#FF9800" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
             </GridLayout>
 
-            <!-- SEZIONE FOTO -->
+            <!-- SEZIONE FOTO DURANTE LA CORSA -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/cardPhoto"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_margin="8dp"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="4dp">
+                android:layout_margin="4dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="2dp">
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp"
+                    android:padding="12dp"
                     android:gravity="center">
 
-                    <ImageView
-                        android:id="@+id/ivCapturedPhoto"
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/rvRunningPhotos"
                         android:layout_width="match_parent"
-                        android:layout_height="200dp"
-                        android:scaleType="centerCrop"
-                        android:visibility="gone"
-                        android:layout_marginBottom="12dp" />
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="8dp"
+                        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnTakePhoto"
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Scatta Foto della Corsa"
+                        android:text="Scatta Foto"
                         app:icon="@android:drawable/ic_menu_camera" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnStopRun"
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="64dp"
-                android:layout_marginTop="32dp"
-                android:text="FERMA"
-                android:backgroundTint="@android:color/holo_red_light"
-                app:cornerRadius="32dp" />
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="16dp">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnPauseRun"
+                    android:layout_width="0dp"
+                    android:layout_height="56dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="8dp"
+                    android:text="PAUSA"
+                    android:backgroundTint="#FF9800"
+                    app:cornerRadius="28dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnStopRun"
+                    android:layout_width="0dp"
+                    android:layout_height="56dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:text="FINISCI CORSA"
+                    android:backgroundTint="@android:color/holo_red_light"
+                    app:cornerRadius="28dp" />
+            </LinearLayout>
         </LinearLayout>
 
     </LinearLayout>

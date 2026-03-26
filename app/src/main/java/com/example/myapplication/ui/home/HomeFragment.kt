@@ -2,21 +2,31 @@ package com.example.myapplication.ui.home
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.android.volley.Request
 import com.android.volley.toolbox.JsonObjectRequest
 import com.android.volley.toolbox.Volley
+import com.bumptech.glide.Glide
 import com.example.myapplication.R
+import com.example.myapplication.ui.social.GroupRunSummaryFragment
+import com.example.myapplication.ui.social.ParticipantLiveStats
 import com.google.android.gms.location.LocationServices
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.*
 import org.json.JSONObject
+import java.text.SimpleDateFormat
+import java.util.*
 
 class HomeFragment : Fragment() {
 
@@ -24,6 +34,9 @@ class HomeFragment : Fragment() {
     private lateinit var tvTemp: TextView
     private lateinit var tvWeatherDesc: TextView
     private lateinit var tvRunningAdvice: TextView
+    private lateinit var rvRecent: RecyclerView
+    private lateinit var rvHourly: RecyclerView
+    private lateinit var database: DatabaseReference
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -36,13 +49,74 @@ class HomeFragment : Fragment() {
         tvTemp = view.findViewById(R.id.tvTemp)
         tvWeatherDesc = view.findViewById(R.id.tvWeatherDesc)
         tvRunningAdvice = view.findViewById(R.id.tvRunningAdvice)
+        rvRecent = view.findViewById(R.id.rvRecentActivities)
+        rvHourly = view.findViewById(R.id.rvHourlyForecast)
 
         val currentUser = FirebaseAuth.getInstance().currentUser
         tvUserEmailFragment.text = currentUser?.email ?: "Utente"
         
+        rvRecent.layoutManager = LinearLayoutManager(context)
+        rvHourly.layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
+        
+        database = FirebaseDatabase.getInstance("https://maccproject-9de7e-default-rtdb.europe-west1.firebasedatabase.app").reference
+        
+        loadRecentActivities()
         checkLocationPermission()
         
         return view
+    }
+
+    private fun loadRecentActivities() {
+        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        database.child("users").child(userId).child("recent_activities").limitToLast(10)
+            .addValueEventListener(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val list = mutableListOf<PastRunData>()
+                    for (child in snapshot.children) {
+                        val runId = child.key ?: ""
+                        val name = child.child("groupName").value?.toString() ?: "Corsa"
+                        val type = child.child("type").value?.toString() ?: "group"
+                        val time = child.child("timestamp").value as? Long ?: 0L
+                        val coverPhoto = child.child("coverPhoto").value?.toString()
+                        
+                        val stats = mutableListOf<ParticipantLiveStats>()
+                        child.child("stats").children.forEach { s ->
+                            val uId = s.child("userId").value?.toString() ?: ""
+                            val speed = (s.child("speed").value as? Number)?.toDouble() ?: 0.0
+                            val calories = (s.child("calories").value as? Number)?.toInt() ?: 0
+                            val dist = (s.child("distance").value as? Number)?.toDouble() ?: 0.0
+                            stats.add(ParticipantLiveStats(uId, speed, calories, dist))
+                        }
+                        
+                        val photos = mutableListOf<String>()
+                        child.child("photos").children.forEach { p ->
+                            p.getValue(String::class.java)?.let { photos.add(it) }
+                        }
+                        
+                        list.add(PastRunData(runId, name, time, stats, photos, type, coverPhoto))
+                    }
+                    rvRecent.adapter = RecentActivitiesAdapter(list.reversed()) { data ->
+                        openRunDetails(data)
+                    }
+                }
+                override fun onCancelled(error: DatabaseError) {}
+            })
+    }
+
+    private fun openRunDetails(data: PastRunData) {
+        val isGroup = data.type == "group"
+        val summaryFragment = GroupRunSummaryFragment.newInstance(
+            data.stats, 
+            data.photos, 
+            emptyMap(), 
+            isGroup = isGroup, 
+            runId = data.id,
+            coverPhoto = data.coverPhoto
+        )
+        parentFragmentManager.beginTransaction()
+            .replace(R.id.nav_host_fragment, summaryFragment)
+            .addToBackStack(null)
+            .commit()
     }
 
     private fun checkLocationPermission() {
@@ -50,7 +124,6 @@ class HomeFragment : Fragment() {
             == PackageManager.PERMISSION_GRANTED) {
             getDeviceLocation()
         } else {
-            // Roma default se mancano i permessi
             fetchWeatherData(41.89, 12.49)
         }
     }
@@ -71,19 +144,11 @@ class HomeFragment : Fragment() {
     }
 
     private fun fetchWeatherData(lat: Double, lon: Double) {
-        // API di Open-Meteo: gratuita, senza chiavi e illimitata per uso personale
-        val url = "https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon&current=temperature_2m,weather_code"
-
+        val url = "https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon&current=temperature_2m,weather_code&hourly=temperature_2m,weather_code,precipitation_probability&timezone=auto"
         val queue = Volley.newRequestQueue(requireContext())
         val jsonObjectRequest = JsonObjectRequest(Request.Method.GET, url, null,
-            { response ->
-                updateWeatherUI(response)
-            },
-            { error ->
-                tvCity.text = "Errore meteo"
-                Log.e("WeatherAPI", "Error: ${error.message}")
-                tvRunningAdvice.text = "Impossibile caricare i dati meteo al momento."
-            }
+            { response -> updateWeatherUI(response) },
+            { error -> Log.e("WeatherAPI", "Error: ${error.message}") }
         )
         queue.add(jsonObjectRequest)
     }
@@ -91,49 +156,160 @@ class HomeFragment : Fragment() {
     private fun updateWeatherUI(response: JSONObject) {
         try {
             val current = response.getJSONObject("current")
-            val temp = current.getDouble("temperature_2m")
-            val weatherCode = current.getInt("weather_code")
-
             tvCity.text = "Meteo Attuale"
-            tvTemp.text = "${temp.toInt()}°C"
-            
-            val (description, isBadWeather) = mapWeatherCode(weatherCode)
+            tvTemp.text = "${current.getDouble("temperature_2m").toInt()}°C"
+            val (description, isBadWeather) = mapWeatherCode(current.getInt("weather_code"))
             tvWeatherDesc.text = description
+            setRunningAdvice(current.getDouble("temperature_2m"), isBadWeather)
 
-            setRunningAdvice(temp, isBadWeather)
+            val hourly = response.getJSONObject("hourly")
+            val times = hourly.getJSONArray("time")
+            val temps = hourly.getJSONArray("temperature_2m")
+            val codes = hourly.getJSONArray("weather_code")
+            val precipProbs = hourly.getJSONArray("precipitation_probability")
+
+            val hourlyList = mutableListOf<HourlyWeatherData>()
+            
+            val sdfInput = SimpleDateFormat("yyyy-MM-dd'T'HH:mm", Locale.getDefault())
+            val sdfOutput = SimpleDateFormat("HH:mm", Locale.getDefault())
+            val now = System.currentTimeMillis()
+
+            for (i in 0 until times.length()) {
+                val timeStr = times.getString(i)
+                val date = sdfInput.parse(timeStr)
+                if (date != null && date.time > now - 3600000 && hourlyList.size < 24) {
+                    hourlyList.add(HourlyWeatherData(
+                        sdfOutput.format(date),
+                        temps.getDouble(i).toInt(),
+                        codes.getInt(i),
+                        precipProbs.getInt(i)
+                    ))
+                }
+            }
+            rvHourly.adapter = HourlyWeatherAdapter(hourlyList)
+
         } catch (e: Exception) {
             Log.e("HomeFragment", "JSON Parsing error: ${e.message}")
         }
     }
 
     private fun mapWeatherCode(code: Int): Pair<String, Boolean> {
-        // Mapping dei codici WMO (World Meteorological Organization)
         return when (code) {
             0 -> "Cielo sereno" to false
-            1, 2, 3 -> "Parzialmente nuvoloso" to false
-            45, 48 -> "Nebbia" to false
-            51, 53, 55 -> "Pioggerellina" to true
-            61, 63, 65 -> "Pioggia" to true
-            71, 73, 75 -> "Neve" to true
-            80, 81, 82 -> "Rovesci di pioggia" to true
+            in 1..3 -> "Parzialmente nuvoloso" to false
+            in 45..48 -> "Nebbia" to false
+            in 51..67 -> "Pioggerellina/Pioggia" to true
+            in 71..77 -> "Neve" to true
+            in 80..82 -> "Rovesci di pioggia" to true
+            in 85..86 -> "Rovesci di neve" to true
             95, 96, 99 -> "Temporale" to true
-            else -> "Variabile" to false
+            else -> "Variabile" to true
         }
     }
 
     private fun setRunningAdvice(temp: Double, isBadWeather: Boolean) {
         val advice = when {
-            isBadWeather -> 
-                "Il tempo non è ideale per correre. Forse meglio un allenamento indoor oggi? 🏠"
-            temp > 30 -> 
-                "Fa molto caldo! Se decidi di correre, resta all'ombra e bevi molta acqua. ☀️🔥"
-            temp < 5 -> 
-                "Fa freddo! Assicurati di coprirti bene prima di uscire. 🧣"
-            temp in 10.0..22.0 -> 
-                "Clima perfetto per una corsa! Esci e goditela al massimo. 🏃‍♂️✨"
-            else -> 
-                "Il tempo è discreto per correre. Buon allenamento! 👍"
+            isBadWeather -> "Il tempo non è ideale per correre. Forse meglio un allenamento indoor oggi? 🏠"
+            temp in 10.0..22.0 -> "Clima perfetto per una corsa! Esci e goditela al massimo. 🏃‍♂️✨"
+            else -> "Il tempo è discreto per correre. Buon allenamento! 👍"
         }
         tvRunningAdvice.text = advice
     }
+}
+
+data class HourlyWeatherData(
+    val hour: String,
+    val temp: Int,
+    val weatherCode: Int,
+    val precipitationProb: Int
+)
+
+class HourlyWeatherAdapter(private val items: List<HourlyWeatherData>) :
+    RecyclerView.Adapter<HourlyWeatherAdapter.ViewHolder>() {
+
+    class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        val tvHour: TextView = view.findViewById(R.id.tvHour)
+        val ivIcon: ImageView = view.findViewById(R.id.ivWeatherIcon)
+        val tvTemp: TextView = view.findViewById(R.id.tvHourlyTemp)
+        val tvPrecip: TextView = view.findViewById(R.id.tvPrecipitation)
+        val rainGraph: RainGraphView = view.findViewById(R.id.viewRainGraph)
+    }
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+        val view = LayoutInflater.from(parent.context).inflate(R.layout.item_hourly_weather, parent, false)
+        return ViewHolder(view)
+    }
+
+    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+        val item = items[position]
+        holder.tvHour.text = item.hour
+        holder.tvTemp.text = "${item.temp}°"
+        holder.tvPrecip.text = "${item.precipitationProb}%"
+        
+        val iconRes = when (item.weatherCode) {
+            0 -> R.drawable.ic_weather_sunny
+            in 1..3 -> R.drawable.ic_weather_cloudy
+            else -> R.drawable.ic_weather_rainy
+        }
+        holder.ivIcon.setImageResource(iconRes)
+
+        val prev = if (position > 0) items[position - 1].precipitationProb else null
+        val next = if (position < items.size - 1) items[position + 1].precipitationProb else null
+        holder.rainGraph.setData(item.precipitationProb, prev, next)
+    }
+
+    override fun getItemCount() = items.size
+}
+
+data class PastRunData(
+    val id: String, 
+    val name: String, 
+    val timestamp: Long, 
+    val stats: List<ParticipantLiveStats>, 
+    val photos: List<String>,
+    val type: String = "group",
+    val coverPhoto: String? = null
+)
+
+class RecentActivitiesAdapter(
+    private val activities: List<PastRunData>,
+    private val onClick: (PastRunData) -> Unit
+) : RecyclerView.Adapter<RecentActivitiesAdapter.ViewHolder>() {
+    class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        val tvName: TextView = view.findViewById(R.id.tvRecentName)
+        val tvDate: TextView = view.findViewById(R.id.tvRecentDate)
+        val ivCover: ImageView = view.findViewById(R.id.ivRecentCover)
+    }
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+        val view = LayoutInflater.from(parent.context).inflate(R.layout.item_recent_activity, parent, false)
+        return ViewHolder(view)
+    }
+    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+        val act = activities[position]
+        val prefix = if (act.type == "single") "Corsa Singola" else "Corsa di Gruppo"
+        
+        // Evita ridondanza tipo "Corsa Singola: Corsa Singola"
+        if (act.name.equals("Corsa", ignoreCase = true) || act.name.equals(prefix, ignoreCase = true)) {
+            holder.tvName.text = prefix
+        } else {
+            holder.tvName.text = "$prefix: ${act.name}"
+        }
+
+        holder.tvDate.text = java.text.DateFormat.getDateTimeInstance().format(java.util.Date(act.timestamp))
+        
+        val context = holder.itemView.context
+        if (act.coverPhoto != null) {
+            holder.ivCover.clearColorFilter()
+            Glide.with(context).load(act.coverPhoto).placeholder(R.drawable.ic_run).into(holder.ivCover)
+        } else if (act.photos.isNotEmpty()) {
+            holder.ivCover.clearColorFilter()
+            Glide.with(context).load(act.photos[0]).placeholder(R.drawable.ic_run).into(holder.ivCover)
+        } else {
+            holder.ivCover.setImageResource(R.drawable.ic_run)
+            holder.ivCover.setColorFilter(Color.parseColor("#6200EE"))
+        }
+
+        holder.itemView.setOnClickListener { onClick(act) }
+    }
+    override fun getItemCount() = activities.size
 }
