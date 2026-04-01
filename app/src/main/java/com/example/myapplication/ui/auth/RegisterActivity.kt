@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.util.Patterns
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageButton
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
@@ -22,6 +23,7 @@ class RegisterActivity : AppCompatActivity() {
     private lateinit var etConfirmPassword: EditText
     private lateinit var btnCreateAccount: Button
     private lateinit var btnGoToLogin: Button
+    private lateinit var btnBackRegister: ImageButton
 
     private val repository = AuthRepositoryImpl()
     private val registerUseCase = RegisterUseCase(repository)
@@ -36,6 +38,11 @@ class RegisterActivity : AppCompatActivity() {
         etConfirmPassword = findViewById(R.id.etConfirmPassword)
         btnCreateAccount = findViewById(R.id.btnCreateAccount)
         btnGoToLogin = findViewById(R.id.btnGoToLogin)
+        btnBackRegister = findViewById(R.id.btnBackRegister)
+
+        btnBackRegister.setOnClickListener {
+            finish()
+        }
 
         btnCreateAccount.setOnClickListener {
             registerUser()

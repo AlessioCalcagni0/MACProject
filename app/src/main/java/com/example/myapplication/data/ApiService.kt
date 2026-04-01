@@ -2,9 +2,11 @@ package com.example.myapplication.data
 
 import com.google.gson.annotations.SerializedName
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -29,6 +31,23 @@ interface ApiService {
 
     @GET("groups")
     suspend fun getGroups(): List<GroupDetailedResponse>
+
+    @POST("groups/{groupId}/start-run")
+    suspend fun startGroupRun(
+        @Path("groupId") groupId: String,
+        @Query("organizer_id") organizerId: String
+    ): GroupStartRunResponse
+
+    @PUT("groups/{groupId}")
+    suspend fun updateGroup(
+        @Path("groupId") groupId: String,
+        @Query("name") newName: String
+    ): SimpleStatusResponse
+
+    @DELETE("groups/{groupId}")
+    suspend fun deleteGroup(
+        @Path("groupId") groupId: String
+    ): SimpleStatusResponse
 
     @POST("groups/{groupId}/invites")
     suspend fun inviteToGroup(
@@ -72,15 +91,27 @@ interface ApiService {
 
 data class RunStartResponse(val run_id: String, val status: String)
 
+data class SimpleStatusResponse(val status: String)
+
 data class GroupResponse(
     @SerializedName("group_id") val id: String
 )
 
-data class GroupDetailedResponse(
-    val id: String,
-    val name: String,
-    @SerializedName("members_ids") val membersIds: List<String>?
+data class GroupStartRunResponse(
+    val group_id: String,
+    val group_name: String,
+    val members: List<String>
 )
+
+data class GroupDetailedResponse(
+    val id: String?,
+    @SerializedName("group_id") val groupId: String?,
+    val name: String,
+    @SerializedName("creator_id") val creatorId: String? = null,
+    @SerializedName("members_ids") val membersIds: List<String>?
+) {
+    val realId: String get() = id ?: groupId ?: ""
+}
 
 data class GroupInviteResponse(
     val id: String,

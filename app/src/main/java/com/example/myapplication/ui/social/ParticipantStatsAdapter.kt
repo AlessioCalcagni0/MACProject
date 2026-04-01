@@ -12,18 +12,24 @@ import java.util.Locale
 
 class ParticipantStatsAdapter(
     private var stats: List<ParticipantLiveStats>,
-    private val namesMap: Map<String, String>
+    private var namesMap: Map<String, String>
 ) : RecyclerView.Adapter<ParticipantStatsAdapter.ViewHolder>() {
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val tvName: TextView = view.findViewById(R.id.tvParticipantName)
-        val tvSpeed: TextView = view.findViewById(R.id.tvParticipantSpeed)
+        val tvDistance: TextView = view.findViewById(R.id.tvParticipantDistance)
         val tvCalories: TextView = view.findViewById(R.id.tvParticipantCalories)
+        val tvSpeed: TextView = view.findViewById(R.id.tvParticipantSpeed)
         val indicator: View = view.findViewById(R.id.viewUserIndicator)
     }
 
     fun updateData(newData: List<ParticipantLiveStats>) {
         stats = newData
+        notifyDataSetChanged()
+    }
+
+    fun updateNames(newNames: Map<String, String>) {
+        namesMap = newNames
         notifyDataSetChanged()
     }
 
@@ -34,9 +40,12 @@ class ParticipantStatsAdapter(
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val s = stats[position]
         val isMe = s.userId == FirebaseAuth.getInstance().currentUser?.uid
+        
         holder.tvName.text = namesMap[s.userId] ?: "Runner"
-        holder.tvSpeed.text = String.format(Locale.getDefault(), "%.1f km/h", s.speed)
-        holder.tvCalories.text = String.format(Locale.getDefault(), "%.2f km | %d kcal", s.distance, s.calories)
+        holder.tvDistance.text = String.format(Locale.getDefault(), "Distanza percorsa: %.2f km", s.distance)
+        holder.tvCalories.text = String.format(Locale.getDefault(), "Calorie bruciate: %d kcal", s.calories)
+        holder.tvSpeed.text = String.format(Locale.getDefault(), "Velocità media: %.1f km/h", s.speed)
+
         holder.indicator.setBackgroundColor(if (isMe) Color.BLUE else Color.RED)
     }
 

@@ -8,6 +8,7 @@
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
+        android:fillViewport="true"
         app:layout_constraintBottom_toTopOf="@+id/btnStartGroupRun"
         app:layout_constraintTop_toTopOf="parent">
 
@@ -34,9 +35,10 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="24dp"
-                android:visibility="gone" />
+                android:visibility="gone"
+                android:nestedScrollingEnabled="false" />
 
-            <!-- SEZIONE INVITI GRUPPO (ISCRIZIONE) -->
+            <!-- SEZIONE INVITI GRUPPO -->
             <TextView
                 android:id="@+id/tvGroupInvitesHeader"
                 android:layout_width="wrap_content"
@@ -53,9 +55,10 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="24dp"
-                android:visibility="gone" />
+                android:visibility="gone"
+                android:nestedScrollingEnabled="false" />
 
-            <!-- NUOVA SEZIONE: INVITI CORSA DI GRUPPO ATTIVI -->
+            <!-- SEZIONE INVITI CORSA ATTIVI -->
             <TextView
                 android:id="@+id/tvActiveRunInvitesHeader"
                 android:layout_width="wrap_content"
@@ -72,7 +75,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="24dp"
-                android:visibility="gone" />
+                android:visibility="gone"
+                android:nestedScrollingEnabled="false" />
 
             <!-- SEZIONE GRUPPI -->
             <RelativeLayout
@@ -98,20 +102,14 @@
                     android:textColor="#6200EE" />
             </RelativeLayout>
 
-            <com.google.android.material.card.MaterialCardView
+            <!-- Rimossa la CardView che avvolgeva il RecyclerView per evitare conflitti di click -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvGroups"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:minHeight="100dp"
                 android:layout_marginBottom="24dp"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="2dp">
-
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/rvGroups"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:minHeight="80dp"
-                    android:padding="8dp" />
-            </com.google.android.material.card.MaterialCardView>
+                android:nestedScrollingEnabled="false" />
 
             <!-- SEZIONE AMICI -->
             <RelativeLayout
@@ -137,20 +135,13 @@
                     android:textColor="#6200EE" />
             </RelativeLayout>
 
-            <com.google.android.material.card.MaterialCardView
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvFriends"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:minHeight="100dp"
                 android:layout_marginBottom="24dp"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="2dp">
-
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/rvFriends"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:minHeight="100dp"
-                    android:padding="8dp" />
-            </com.google.android.material.card.MaterialCardView>
+                android:nestedScrollingEnabled="false" />
 
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>

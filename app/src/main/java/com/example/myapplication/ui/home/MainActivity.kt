@@ -2,7 +2,6 @@ package com.example.myapplication.ui.home
 
 import android.os.Bundle
 import android.util.Log
-import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
@@ -13,6 +12,9 @@ import com.example.myapplication.ui.profile.ProfileFragment
 import com.example.myapplication.ui.run.RunFragment
 import com.example.myapplication.ui.social.SocialFragment
 import com.example.myapplication.ui.stats.StatsFragment
+import com.example.myapplication.ui.social.GroupLobbyFragment
+import com.example.myapplication.ui.social.GroupRunFragment
+import com.example.myapplication.ui.social.GroupRunSummaryFragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.imageview.ShapeableImageView
 import com.google.firebase.auth.FirebaseAuth
@@ -50,9 +52,6 @@ class MainActivity : AppCompatActivity() {
             supportFragmentManager.beginTransaction().add(R.id.nav_host_fragment, home, TAG_HOME).commit()
             activeFragment = home
             tvToolbarTitle.text = "Home"
-        } else {
-            activeFragment = supportFragmentManager.fragments.firstOrNull { it.isVisible }
-            updateTitleByTag(activeFragment?.tag ?: TAG_HOME)
         }
 
         ivToolbarProfile.setOnClickListener {
@@ -70,55 +69,30 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun updateToolbarProfileImage() {
-        val user = FirebaseAuth.getInstance().currentUser
-        user?.let {
-            if (it.photoUrl != null) {
-                Glide.with(this)
-                    .load(it.photoUrl)
-                    .circleCrop()
-                    .placeholder(R.drawable.ic_profile)
-                    .error(R.drawable.ic_profile)
-                    .into(ivToolbarProfile)
-            } else {
-                ivToolbarProfile.setImageResource(R.drawable.ic_profile)
-            }
-        }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        updateToolbarProfileImage()
-    }
-
-    private fun syncUserWithBackend() {
-        val user = FirebaseAuth.getInstance().currentUser ?: return
-        val userData = mapOf(
-            "uid" to user.uid,
-            "email" to (user.email ?: ""),
-            "display_name" to (user.displayName ?: "Runner")
-        )
-
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val tokenResult = Tasks.await(user.getIdToken(false))
-                val token = tokenResult.token
-                if (token != null) {
-                    RetrofitClient.api.syncUser("Bearer $token", userData)
-                }
-            } catch (e: Exception) {
-                Log.e("MainActivity", "Errore sincronizzazione: ${e.message}")
-            }
-        }
+    fun navigateToFragment(fragment: Fragment, tag: String, title: String) {
+        val transaction = supportFragmentManager.beginTransaction()
+        activeFragment?.let { transaction.hide(it) }
+        transaction.add(R.id.nav_host_fragment, fragment, tag)
+        transaction.addToBackStack(tag)
+        activeFragment = fragment
+        tvToolbarTitle.text = title
+        transaction.commit()
     }
 
     private fun switchFragment(tag: String, title: String, creator: () -> Fragment) {
         val fm = supportFragmentManager
+        val transaction = fm.beginTransaction()
+
+        // PULIZIA: Se stiamo cambiando sezione, rimuoviamo Lobby, Run attiva o Summary
+        val specialFragments = fm.fragments.filter { 
+            it is GroupLobbyFragment || it is GroupRunFragment || it is GroupRunSummaryFragment 
+        }
+        specialFragments.forEach { transaction.remove(it) }
+
         val existing = fm.findFragmentByTag(tag)
         
-        val transaction = fm.beginTransaction()
-        
-        activeFragment?.let { transaction.hide(it) }
+        // Nascondiamo il fragment attivo se non è tra quelli che abbiamo appena rimosso
+        activeFragment?.let { if (it.isAdded) transaction.hide(it) }
 
         if (existing != null) {
             transaction.show(existing)
@@ -128,19 +102,38 @@ class MainActivity : AppCompatActivity() {
             transaction.add(R.id.nav_host_fragment, newFragment, tag)
             activeFragment = newFragment
         }
+        
         transaction.commit()
         tvToolbarTitle.text = title
         updateToolbarProfileImage()
     }
 
+    fun updateToolbarProfileImage() {
+        val user = FirebaseAuth.getInstance().currentUser
+        user?.let {
+            if (it.photoUrl != null) {
+                Glide.with(this).load(it.photoUrl).circleCrop().into(ivToolbarProfile)
+            } else {
+                ivToolbarProfile.setImageResource(R.drawable.ic_profile)
+            }
+        }
+    }
+
+    private fun syncUserWithBackend() {
+        val user = FirebaseAuth.getInstance().currentUser ?: return
+        val userData = mapOf("uid" to user.uid, "email" to (user.email ?: ""), "display_name" to (user.displayName ?: "Runner"))
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val token = Tasks.await(user.getIdToken(false)).token
+                if (token != null) RetrofitClient.api.syncUser("Bearer $token", userData)
+            } catch (e: Exception) {}
+        }
+    }
+
     private fun updateTitleByTag(tag: String) {
         tvToolbarTitle.text = when(tag) {
-            TAG_HOME -> "Home"
-            TAG_RUN -> "Corsa Singola"
-            TAG_SOCIAL -> "Social"
-            TAG_STATS -> "Statistiche"
-            TAG_PROFILE -> "Profilo"
-            else -> "Pacemate"
+            TAG_HOME -> "Home"; TAG_RUN -> "Corsa Singola"; TAG_SOCIAL -> "Social"
+            TAG_STATS -> "Statistiche"; TAG_PROFILE -> "Profilo"; else -> "Pacemate"
         }
     }
 }

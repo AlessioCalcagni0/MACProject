@@ -3,55 +3,80 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="8dp"
-    app:cardCornerRadius="12dp"
-    app:cardElevation="2dp">
+    android:layout_marginBottom="16dp"
+    app:cardCornerRadius="20dp"
+    app:cardElevation="6dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="12dp"
-        android:gravity="center_vertical">
-
-        <View
-            android:id="@+id/viewUserIndicator"
-            android:layout_width="4dp"
-            android:layout_height="match_parent"
-            android:background="#2196F3"
-            android:layout_marginEnd="12dp"/>
+        android:orientation="vertical"
+        android:padding="20dp">
 
         <LinearLayout
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical">
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="16dp">
+
+            <View
+                android:id="@+id/viewUserIndicator"
+                android:layout_width="8dp"
+                android:layout_height="32dp"
+                android:background="#2196F3"
+                android:layout_marginEnd="16dp"/>
 
             <TextView
                 android:id="@+id/tvParticipantName"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Nome Utente"
-                android:textSize="16sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/tvParticipantCalories"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="0.0 km | 0 kcal"
-                android:textColor="#757575"
-                android:textSize="12sp" />
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:textColor="#333333" />
         </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1.5dp"
+            android:background="#F0F0F0"
+            android:layout_marginBottom="16dp"/>
+
+        <TextView
+            android:id="@+id/tvParticipantDistance"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Distanza percorsa: 0.00 km"
+            android:textSize="18sp"
+            android:textColor="#212121"
+            android:layout_marginBottom="8dp"
+            android:drawableStart="@android:drawable/ic_menu_directions"
+            android:drawablePadding="12dp"/>
+
+        <TextView
+            android:id="@+id/tvParticipantCalories"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Calorie bruciate = 0 kcal"
+            android:textSize="18sp"
+            android:textColor="#212121"
+            android:layout_marginBottom="8dp"
+            android:drawableStart="@drawable/ic_goal_calories"
+            android:drawablePadding="12dp"
+            app:drawableTint="#FF5722"/>
 
         <TextView
             android:id="@+id/tvParticipantSpeed"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="0.0 km/h"
-            android:textColor="#4CAF50"
+            android:text="Velocità media = 0.0 km/h"
             android:textSize="18sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            android:textColor="#4CAF50"
+            android:drawableStart="@drawable/ic_run"
+            android:drawablePadding="12dp"
+            app:drawableTint="#4CAF50"/>
 
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

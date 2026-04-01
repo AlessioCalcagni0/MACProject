@@ -1,5 +1,6 @@
 package com.example.myapplication.ui.social
 
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -9,7 +10,7 @@ import com.example.myapplication.R
 import com.example.myapplication.data.GroupDetailedResponse
 
 class GroupsAdapter(
-    private val groups: List<GroupDetailedResponse>,
+    private var groups: List<GroupDetailedResponse>,
     private val userNamesMap: Map<String, String> = emptyMap(),
     private val onGroupClick: (GroupDetailedResponse) -> Unit = {}
 ) : RecyclerView.Adapter<GroupsAdapter.GroupViewHolder>() {
@@ -17,7 +18,7 @@ class GroupsAdapter(
     class GroupViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val tvGroupName: TextView = view.findViewById(R.id.tvGroupName)
         val tvMemberCount: TextView = view.findViewById(R.id.tvMemberCount)
-        val tvMembersList: TextView = view.findViewById(R.id.tvMembersList)
+        val container: View = view // L'intera riga
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): GroupViewHolder {
@@ -30,12 +31,16 @@ class GroupsAdapter(
         holder.tvGroupName.text = group.name
         val members = group.membersIds ?: emptyList()
         holder.tvMemberCount.text = "${members.size} partecipanti"
-        
-        // Converte gli ID in nomi usando la mappa fornita
-        val names = members.map { id -> userNamesMap[id] ?: "Utente ($id)" }
-        holder.tvMembersList.text = "Membri: " + names.joinToString(", ")
 
-        holder.itemView.setOnClickListener { onGroupClick(group) }
+        // Rendi i testi non cliccabili così il tocco passa al padre (la riga)
+        holder.tvGroupName.isClickable = false
+        holder.tvMemberCount.isClickable = false
+
+        holder.container.setOnClickListener {
+            // LOG DI EMERGENZA: apparirà in rosso nel Logcat
+            Log.wtf("CLICK_CHECK", "!!! CLICK AVVENUTO SU: ${group.name} !!!")
+            onGroupClick(group)
+        }
     }
 
     override fun getItemCount() = groups.size

@@ -16,6 +16,7 @@ import com.example.myapplication.R
 import com.example.myapplication.data.GroupDetailedResponse
 import com.example.myapplication.data.RetrofitClient
 import com.example.myapplication.data.UserResponse
+import com.example.myapplication.ui.home.MainActivity
 import com.google.android.material.button.MaterialButton
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
@@ -26,28 +27,24 @@ import kotlinx.coroutines.withContext
 
 class SocialFragment : Fragment() {
 
-    private lateinit var btnCreateGroup: MaterialButton
-    private lateinit var btnAddFriend: MaterialButton
-    private lateinit var btnStartGroupRun: MaterialButton
     private lateinit var rvFriends: RecyclerView
     private lateinit var rvFriendRequests: RecyclerView
     private lateinit var rvGroupInvites: RecyclerView
     private lateinit var rvGroups: RecyclerView
     private lateinit var rvActiveRunInvites: RecyclerView
+    
     private lateinit var tvRequestsHeader: TextView
     private lateinit var tvGroupInvitesHeader: TextView
     private lateinit var tvActiveRunInvitesHeader: TextView
-    
-    private var friendsList: List<UserResponse> = emptyList()
+    private lateinit var btnStartGroupRun: MaterialButton
+    private lateinit var btnCreateGroup: MaterialButton
+
     private var myGroupsList: List<GroupDetailedResponse> = emptyList()
+    private var friendsList: List<UserResponse> = emptyList()
     private var allUsersMap: Map<String, String> = emptyMap()
     
     private lateinit var database: DatabaseReference
-    private var runInvitesRef: DatabaseReference? = null
-    private var runInvitesListener: ValueEventListener? = null
-    private lateinit var runInviteAdapter: RunInviteAdapter
-
-    private val DB_URL = "https://maccproject-9de7e-default-rtdb.europe-west1.firebasedatabase.app"
+    private val TAG = "SocialFragment"
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         return inflater.inflate(R.layout.fragment_social, container, false)
@@ -55,164 +52,155 @@ class SocialFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        database = FirebaseDatabase.getInstance(DB_URL).reference
+        database = FirebaseDatabase.getInstance("https://maccproject-9de7e-default-rtdb.europe-west1.firebasedatabase.app").reference
+        
         initViews(view)
         loadData()
         listenForRunInvites()
-
-        btnAddFriend.setOnClickListener { showAddFriendDialog() }
-        btnCreateGroup.setOnClickListener { showCreateGroupDialog() }
-        btnStartGroupRun.setOnClickListener { showSelectGroupForRunDialog() }
     }
 
     private fun initViews(view: View) {
-        btnCreateGroup = view.findViewById(R.id.btnCreateGroup)
-        btnAddFriend = view.findViewById(R.id.btnAddFriend)
-        btnStartGroupRun = view.findViewById(R.id.btnStartGroupRun)
         rvFriends = view.findViewById(R.id.rvFriends)
-        rvFriends.layoutManager = LinearLayoutManager(context)
         rvFriendRequests = view.findViewById(R.id.rvFriendRequests)
-        rvFriendRequests.layoutManager = LinearLayoutManager(context)
         rvGroupInvites = view.findViewById(R.id.rvGroupInvites)
-        rvGroupInvites.layoutManager = LinearLayoutManager(context)
         rvGroups = view.findViewById(R.id.rvGroups)
-        rvGroups.layoutManager = LinearLayoutManager(context)
         rvActiveRunInvites = view.findViewById(R.id.rvActiveRunInvites)
-        rvActiveRunInvites.layoutManager = LinearLayoutManager(context)
-        runInviteAdapter = RunInviteAdapter(emptyList()) { invite, status -> respondToRunInvite(invite, status) }
-        rvActiveRunInvites.adapter = runInviteAdapter
+        
         tvRequestsHeader = view.findViewById(R.id.tvRequestsHeader)
         tvGroupInvitesHeader = view.findViewById(R.id.tvGroupInvitesHeader)
         tvActiveRunInvitesHeader = view.findViewById(R.id.tvActiveRunInvitesHeader)
-    }
+        btnStartGroupRun = view.findViewById(R.id.btnStartGroupRun)
+        btnCreateGroup = view.findViewById(R.id.btnCreateGroup)
 
-    private fun listenForRunInvites() {
-        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        val ref = database.child("run_invites").child(userId)
-        runInvitesRef = ref
-        runInvitesListener = object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                val invites = mutableListOf<RunInvite>()
-                for (child in snapshot.children) {
-                    val gId = child.key ?: continue
-                    val gName = child.child("groupName").value?.toString() ?: "Gruppo Ignoto"
-                    invites.add(RunInvite(gId, gName))
-                }
-                activity?.runOnUiThread {
-                    if (invites.isNotEmpty()) {
-                        tvActiveRunInvitesHeader.visibility = View.VISIBLE
-                        rvActiveRunInvites.visibility = View.VISIBLE
-                        runInviteAdapter.updateData(invites)
-                    } else {
-                        tvActiveRunInvitesHeader.visibility = View.GONE
-                        rvActiveRunInvites.visibility = View.GONE
-                    }
-                }
-            }
-            override fun onCancelled(error: DatabaseError) {}
-        }
-        ref.addValueEventListener(runInvitesListener!!)
-    }
+        rvFriends.layoutManager = LinearLayoutManager(context)
+        rvFriendRequests.layoutManager = LinearLayoutManager(context)
+        rvGroupInvites.layoutManager = LinearLayoutManager(context)
+        rvGroups.layoutManager = LinearLayoutManager(context)
+        rvActiveRunInvites.layoutManager = LinearLayoutManager(context)
 
-    private fun respondToRunInvite(invite: RunInvite, status: String) {
-        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        database.child("run_invites").child(userId).child(invite.groupId).removeValue()
-        if (status == "accepted") {
-            database.child("lobbies").child(invite.groupId).child(userId).setValue("ready")
-            navigateToLobbyById(invite.groupId, invite.groupName)
-        } else {
-            database.child("lobbies").child(invite.groupId).child(userId).setValue("rejected")
-        }
-    }
-
-    private fun navigateToLobbyById(gId: String, gName: String) {
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val groups = RetrofitClient.api.getGroups()
-                val group = groups.find { it.id == gId }
-                withContext(Dispatchers.Main) {
-                    val lobbyFragment = GroupLobbyFragment.newInstance(gId, gName, group?.membersIds ?: emptyList(), allUsersMap)
-                    parentFragmentManager.beginTransaction().replace(R.id.nav_host_fragment, lobbyFragment).addToBackStack(null).commit()
-                }
-            } catch (e: Exception) {}
-        }
-    }
-
-    private fun sendGroupRunRequests(group: GroupDetailedResponse) {
-        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        
-        // Reset totale della lobby per evitare avvii automatici
-        database.child("lobbies").child(group.id).removeValue().addOnCompleteListener {
-            database.child("lobbies").child(group.id).child("status").setValue("waiting")
-            database.child("lobbies").child(group.id).child("organizer").setValue(userId)
-            database.child("lobbies").child(group.id).child(userId).setValue("ready")
-
-            group.membersIds?.forEach { memberId ->
-                if (memberId != userId) {
-                    val inviteData = mapOf("groupName" to group.name, "from" to userId)
-                    database.child("run_invites").child(memberId).child(group.id).setValue(inviteData)
-                }
-            }
-            navigateToLobby(group)
-        }
-    }
-
-    private fun navigateToLobby(group: GroupDetailedResponse) {
-        val lobbyFragment = GroupLobbyFragment.newInstance(group.id, group.name, group.membersIds ?: emptyList(), allUsersMap)
-        parentFragmentManager.beginTransaction().replace(R.id.nav_host_fragment, lobbyFragment).addToBackStack(null).commit()
+        btnStartGroupRun.setOnClickListener { showSelectGroupForRunDialog() }
+        btnCreateGroup.setOnClickListener { showCreateGroupDialog() }
     }
 
     private fun loadData() {
         val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                friendsList = RetrofitClient.api.getFriends(userId)
-                val currentUserEmail = FirebaseAuth.getInstance().currentUser?.email ?: ""
-                val currentUserName = FirebaseAuth.getInstance().currentUser?.displayName ?: currentUserEmail
-                val tempMap = mutableMapOf<String, String>()
-                tempMap[userId] = currentUserName
-                friendsList.forEach { tempMap[it.id] = it.display_name ?: it.email }
-                allUsersMap = tempMap
+                val friends = RetrofitClient.api.getFriends(userId)
+                val allGroups = RetrofitClient.api.getGroups()
                 val friendRequests = try { RetrofitClient.api.getPendingRequests(userId) } catch (e: Exception) { emptyList() }
                 val groupInvites = try { RetrofitClient.api.getPendingGroupInvites(userId) } catch (e: Exception) { emptyList() }
-                val allGroups = try { RetrofitClient.api.getGroups() } catch (e: Exception) { emptyList() }
+
                 myGroupsList = allGroups.filter { it.membersIds?.contains(userId) == true }
+                friendsList = friends
+
+                val currentUserName = FirebaseAuth.getInstance().currentUser?.displayName ?: "Io"
+                val tempMap = mutableMapOf<String, String>()
+                tempMap[userId] = currentUserName
+                friends.forEach { tempMap[it.id] = it.display_name ?: it.email }
+                allUsersMap = tempMap
+
                 withContext(Dispatchers.Main) {
                     rvFriends.adapter = FriendsAdapter(friendsList)
-                    rvGroups.adapter = GroupsAdapter(myGroupsList, allUsersMap) { }
-                    if (friendRequests.isNotEmpty()) {
-                        tvRequestsHeader.visibility = View.VISIBLE
-                        rvFriendRequests.visibility = View.VISIBLE
-                        rvFriendRequests.adapter = FriendRequestsAdapter(friendRequests) { id, s -> respondToFriendRequest(id, s) }
-                    } else {
-                        tvRequestsHeader.visibility = View.GONE
-                        rvFriendRequests.visibility = View.GONE
-                    }
-                    if (groupInvites.isNotEmpty()) {
-                        tvGroupInvitesHeader.visibility = View.VISIBLE
-                        rvGroupInvites.visibility = View.VISIBLE
-                        rvGroupInvites.adapter = GroupInvitesAdapter(groupInvites) { id, s -> respondToGroupInvite(id, s) }
-                    } else {
-                        tvGroupInvitesHeader.visibility = View.GONE
-                        rvGroupInvites.visibility = View.GONE
-                    }
+                    rvGroups.adapter = GroupsAdapter(myGroupsList, allUsersMap) { group -> showGroupDetailsDialog(group) }
+
+                    tvRequestsHeader.visibility = if (friendRequests.isNotEmpty()) View.VISIBLE else View.GONE
+                    rvFriendRequests.visibility = if (friendRequests.isNotEmpty()) View.VISIBLE else View.GONE
+                    if (friendRequests.isNotEmpty()) rvFriendRequests.adapter = FriendRequestsAdapter(friendRequests) { id, s -> respondToFriendRequest(id, s) }
+
+                    tvGroupInvitesHeader.visibility = if (groupInvites.isNotEmpty()) View.VISIBLE else View.GONE
+                    rvGroupInvites.visibility = if (groupInvites.isNotEmpty()) View.VISIBLE else View.GONE
+                    if (groupInvites.isNotEmpty()) rvGroupInvites.adapter = GroupInvitesAdapter(groupInvites) { id, s -> respondToGroupInvite(id, s) }
                 }
-            } catch (e: Exception) {}
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading: ${e.message}")
+            }
         }
     }
 
+    private fun showGroupDetailsDialog(group: GroupDetailedResponse) {
+        val members = group.membersIds?.map { allUsersMap[it] ?: "Utente ($it)" } ?: emptyList()
+        AlertDialog.Builder(requireContext()).setTitle(group.name).setMessage("Membri:\n\n" + members.joinToString("\n")).setPositiveButton("Chiudi", null).show()
+    }
+
     private fun showSelectGroupForRunDialog() {
-        if (myGroupsList.isEmpty()) { Toast.makeText(context, "Non sei in nessun gruppo", Toast.LENGTH_SHORT).show(); return }
+        if (myGroupsList.isEmpty()) { Toast.makeText(context, "Nessun gruppo disponibile", Toast.LENGTH_SHORT).show(); return }
         val dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_select_group, null)
         val rvSelect = dialogView.findViewById<RecyclerView>(R.id.rvSelectGroup)
         rvSelect.layoutManager = LinearLayoutManager(context)
-        val dialog = AlertDialog.Builder(requireContext()).setView(dialogView).setNegativeButton("Annulla", null).create()
-        rvSelect.adapter = GroupsAdapter(myGroupsList, allUsersMap) { group -> dialog.dismiss(); startGroupRunProcess(group) }
+        val dialog = AlertDialog.Builder(requireContext()).setTitle("Inizia corsa di gruppo").setView(dialogView).setNegativeButton("Annulla", null).create()
+        rvSelect.adapter = GroupsAdapter(myGroupsList, allUsersMap) { group -> dialog.dismiss(); startGroupRunFlow(group) }
         dialog.show()
     }
 
-    private fun startGroupRunProcess(group: GroupDetailedResponse) {
-        AlertDialog.Builder(requireContext()).setTitle("Corsa di Gruppo: ${group.name}").setMessage("Invia una richiesta ai membri per iniziare la corsa.").setPositiveButton("Send Request") { _, _ -> sendGroupRunRequests(group) }.setNegativeButton("Annulla", null).show()
+    private fun startGroupRunFlow(group: GroupDetailedResponse) {
+        val user = FirebaseAuth.getInstance().currentUser ?: return
+        val userId = user.uid
+        val gId = group.realId
+        val userName = user.displayName ?: user.email ?: "Runner"
+        
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val res = RetrofitClient.api.startGroupRun(gId, userId)
+                withContext(Dispatchers.Main) {
+                    val lobbyRef = database.child("lobbies").child(gId)
+                    lobbyRef.removeValue().addOnCompleteListener {
+                        val lobbyData = mapOf("status" to "waiting", "organizer" to userId)
+                        lobbyRef.setValue(lobbyData)
+                        // Scriviamo il nome partecipante
+                        lobbyRef.child("names").child(userId).setValue(userName)
+                        lobbyRef.child(userId).setValue("ready")
+                        
+                        res.members.forEach { mId ->
+                            if (mId != userId) {
+                                database.child("run_invites").child(mId).child(gId).setValue(mapOf("groupName" to group.name, "from" to userId))
+                            }
+                        }
+                        navigateToLobby(gId, group.name, res.members)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error: ${e.message}")
+            }
+        }
+    }
+
+    private fun listenForRunInvites() {
+        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        database.child("run_invites").child(userId).addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val invites = mutableListOf<RunInvite>()
+                for (child in snapshot.children) {
+                    invites.add(RunInvite(child.key!!, child.child("groupName").value?.toString() ?: "Corsa"))
+                }
+                updateInvitesUI(invites)
+            }
+            override fun onCancelled(error: DatabaseError) {}
+        })
+    }
+
+    private fun updateInvitesUI(invites: List<RunInvite>) {
+        tvActiveRunInvitesHeader.visibility = if (invites.isNotEmpty()) View.VISIBLE else View.GONE
+        rvActiveRunInvites.visibility = if (invites.isNotEmpty()) View.VISIBLE else View.GONE
+        if (invites.isNotEmpty()) {
+            rvActiveRunInvites.adapter = RunInviteAdapter(invites) { invite, action ->
+                if (action == "accepted") {
+                    val user = FirebaseAuth.getInstance().currentUser ?: return@RunInviteAdapter
+                    val userId = user.uid
+                    val userName = user.displayName ?: user.email ?: "Runner"
+                    val lRef = database.child("lobbies").child(invite.groupId)
+                    lRef.child("names").child(userId).setValue(userName)
+                    lRef.child(userId).setValue("ready")
+                    navigateToLobby(invite.groupId, invite.groupName, emptyList())
+                }
+                database.child("run_invites").child(FirebaseAuth.getInstance().currentUser!!.uid).child(invite.groupId).removeValue()
+            }
+        }
+    }
+
+    private fun navigateToLobby(id: String, name: String, members: List<String>) {
+        val mainActivity = activity as? MainActivity ?: return
+        mainActivity.navigateToFragment(GroupLobbyFragment.newInstance(id, name, members, allUsersMap), "LOBBY_$id", "Lobby $name")
     }
 
     private fun showCreateGroupDialog() {
@@ -222,11 +210,9 @@ class SocialFragment : Fragment() {
         rvInvite.layoutManager = LinearLayoutManager(context)
         val adapter = InviteFriendsAdapter(friendsList)
         rvInvite.adapter = adapter
-        AlertDialog.Builder(requireContext()).setView(dialogView).setPositiveButton("Crea") { _, _ ->
-            val groupName = etGroupName.text.toString()
-            val selectedFriends = adapter.getSelectedFriends()
-            if (groupName.isNotEmpty()) createGroup(groupName, selectedFriends)
-            else Toast.makeText(context, "Inserisci un nome per il gruppo", Toast.LENGTH_SHORT).show()
+        AlertDialog.Builder(requireContext()).setTitle("Nuovo Gruppo").setView(dialogView).setPositiveButton("Crea") { _, _ ->
+            val name = etGroupName.text.toString()
+            if (name.isNotBlank()) createGroup(name, adapter.getSelectedFriends())
         }.setNegativeButton("Annulla", null).show()
     }
 
@@ -234,39 +220,19 @@ class SocialFragment : Fragment() {
         val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val groupResponse = RetrofitClient.api.createGroup(name, userId)
-                val groupId = groupResponse.id
-                friendIds.forEach { RetrofitClient.api.inviteToGroup(groupId, userId, it) }
+                val res = RetrofitClient.api.createGroup(name, userId)
+                friendIds.forEach { RetrofitClient.api.inviteToGroup(res.id, userId, it) }
                 withContext(Dispatchers.Main) { loadData() }
             } catch (e: Exception) {}
         }
     }
 
-    private fun respondToFriendRequest(requestId: String, status: String) {
-        CoroutineScope(Dispatchers.IO).launch { try { RetrofitClient.api.respondToFriendRequest(requestId, status); withContext(Dispatchers.Main) { loadData() } } catch (e: Exception) {} }
+    private fun respondToFriendRequest(id: String, s: String) {
+        CoroutineScope(Dispatchers.IO).launch { try { RetrofitClient.api.respondToFriendRequest(id, s); withContext(Dispatchers.Main) { loadData() } } catch (e: Exception) {} }
     }
 
-    private fun respondToGroupInvite(inviteId: String, status: String) {
+    private fun respondToGroupInvite(id: String, s: String) {
         val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        CoroutineScope(Dispatchers.IO).launch { try { RetrofitClient.api.respondInvite(inviteId, userId, status); withContext(Dispatchers.Main) { loadData() } } catch (e: Exception) {} }
-    }
-
-    private fun showAddFriendDialog() {
-        val dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_add_friend, null)
-        val etEmail = dialogView.findViewById<EditText>(R.id.etFriendEmail)
-        AlertDialog.Builder(requireContext()).setView(dialogView).setPositiveButton("Invia") { _, _ ->
-            val email = etEmail.text.toString()
-            if (email.isNotEmpty()) sendFriendRequest(email)
-        }.setNegativeButton("Annulla", null).show()
-    }
-
-    private fun sendFriendRequest(email: String) {
-        val fromUserId = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        CoroutineScope(Dispatchers.IO).launch { try { RetrofitClient.api.sendFriendRequest(fromUserId, email); withContext(Dispatchers.Main) { Toast.makeText(context, "Richiesta inviata!", Toast.LENGTH_SHORT).show() } } catch (e: Exception) {} }
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        runInvitesListener?.let { runInvitesRef?.removeEventListener(it) }
+        CoroutineScope(Dispatchers.IO).launch { try { RetrofitClient.api.respondInvite(id, userId, s); withContext(Dispatchers.Main) { loadData() } } catch (e: Exception) {} }
     }
 }

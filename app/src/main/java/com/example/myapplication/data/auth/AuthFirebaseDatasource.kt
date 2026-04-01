@@ -6,10 +6,12 @@ import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialException
 import com.example.myapplication.R
+import com.example.myapplication.data.RetrofitClient
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.auth.UserProfileChangeRequest
 import kotlinx.coroutines.tasks.await
 
 object AuthFirebaseDataSource {
@@ -28,7 +30,26 @@ object AuthFirebaseDataSource {
 
     suspend fun register(name: String, email: String, password: String): Boolean {
         return try {
-            auth.createUserWithEmailAndPassword(email, password).await()
+            val result = auth.createUserWithEmailAndPassword(email, password).await()
+            val user = result.user
+            
+            val profileUpdates = UserProfileChangeRequest.Builder()
+                .setDisplayName(name)
+                .build()
+            user?.updateProfile(profileUpdates)?.await()
+
+            user?.getIdToken(true)?.await()?.token?.let { token ->
+                val userData = mapOf(
+                    "name" to name,
+                    "email" to email
+                )
+                try {
+                    RetrofitClient.api.syncUser("Bearer $token", userData)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Backend sync failed", e)
+                }
+            }
+            
             true
         } catch (e: Exception) {
             Log.e(TAG, "Registration failed", e)
@@ -63,7 +84,6 @@ object AuthFirebaseDataSource {
             
             val credential = result.credential
             
-            // Proviamo a estrarre il token usando il metodo statico della classe per maggiore compatibilità
             val googleIdTokenCredential = try {
                 GoogleIdTokenCredential.createFrom(credential.data)
             } catch (e: Exception) {
@@ -74,7 +94,23 @@ object AuthFirebaseDataSource {
             if (googleIdTokenCredential != null) {
                 val idToken = googleIdTokenCredential.idToken
                 val firebaseCredential = GoogleAuthProvider.getCredential(idToken, null)
-                auth.signInWithCredential(firebaseCredential).await()
+                val authResult = auth.signInWithCredential(firebaseCredential).await()
+                
+                val user = authResult.user
+                user?.getIdToken(true)?.await()?.token?.let { token ->
+                    val displayName = user.displayName ?: ""
+                    
+                    val userData = mapOf(
+                        "name" to displayName,
+                        "email" to (user.email ?: "")
+                    )
+                    try {
+                        RetrofitClient.api.syncUser("Bearer $token", userData)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Backend sync failed after Google Login", e)
+                    }
+                }
+
                 Log.d(TAG, "Firebase login successful")
                 true
             } else {

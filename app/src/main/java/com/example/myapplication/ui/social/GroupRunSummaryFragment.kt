@@ -11,6 +11,7 @@ import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.myapplication.R
+import com.example.myapplication.ui.home.MainActivity
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 import com.google.firebase.auth.FirebaseAuth
@@ -19,20 +20,6 @@ import java.io.Serializable
 import java.util.Locale
 
 class GroupRunSummaryFragment : Fragment() {
-
-    private lateinit var rvStats: RecyclerView
-    private lateinit var rvPhotos: RecyclerView
-    private lateinit var btnClose: MaterialButton
-    
-    private lateinit var tvTitle: TextView
-    private lateinit var tvTotalDistance: TextView
-    private lateinit var tvTotalCalories: TextView
-    private lateinit var tvAvgSpeed: TextView
-    private lateinit var tvDuration: TextView
-
-    private lateinit var cardGoalResult: MaterialCardView
-    private lateinit var tvGoalStatus: TextView
-    private lateinit var tvGoalDetails: TextView
 
     private var runId: String? = null
     private var initialCoverUrl: String? = null
@@ -80,81 +67,79 @@ class GroupRunSummaryFragment : Fragment() {
         runId = arguments?.getString("run_id")
         initialCoverUrl = arguments?.getString("cover_photo")
 
-        tvTitle = view.findViewById(R.id.tvSummaryTitle)
-        tvTotalDistance = view.findViewById(R.id.tvSummaryTotalDistance)
-        tvTotalCalories = view.findViewById(R.id.tvSummaryTotalCalories)
-        tvAvgSpeed = view.findViewById(R.id.tvSummaryAvgSpeed)
-        tvDuration = view.findViewById(R.id.tvSummaryDuration)
+        // Riferimenti UI
+        val tvTitle = view.findViewById<TextView>(R.id.tvSummaryTitle)
+        val tvDuration = view.findViewById<TextView>(R.id.tvSummaryDuration)
+        val tvTotalDistance = view.findViewById<TextView>(R.id.tvSummaryTotalDistance)
+        val tvTotalCalories = view.findViewById<TextView>(R.id.tvSummaryTotalCalories)
+        val tvAvgSpeed = view.findViewById<TextView>(R.id.tvSummaryAvgSpeed)
         
-        cardGoalResult = view.findViewById(R.id.cardGoalResult)
-        tvGoalStatus = view.findViewById(R.id.tvGoalStatus)
-        tvGoalDetails = view.findViewById(R.id.tvGoalDetails)
+        val cardGoalResult = view.findViewById<MaterialCardView>(R.id.cardGoalResult)
+        val tvGoalStatus = view.findViewById<TextView>(R.id.tvGoalStatus)
+        val tvGoalDetails = view.findViewById<TextView>(R.id.tvGoalDetails)
 
-        rvStats = view.findViewById(R.id.rvSummaryStats)
-        rvPhotos = view.findViewById(R.id.rvSummaryPhotos)
-        btnClose = view.findViewById(R.id.btnCloseSummary)
+        val gridSingle = view.findViewById<View>(R.id.gridSingleStats)
+        val tvStatsHeader = view.findViewById<TextView>(R.id.tvStatsHeader)
+        val rvStats = view.findViewById<RecyclerView>(R.id.rvSummaryStats)
+        val rvPhotos = view.findViewById<RecyclerView>(R.id.rvSummaryPhotos)
+        val btnClose = view.findViewById<MaterialButton>(R.id.btnCloseSummary)
 
         tvTitle.text = if (isGroup) "Riassunto Corsa di Gruppo" else "Riassunto Corsa Singola"
 
-        var totalDist = 0.0
-        var totalCal = 0
-        var avgSpeed = 0.0
-        
-        if (stats.isNotEmpty()) {
-            totalDist = stats.sumOf { it.distance }
-            totalCal = stats.sumOf { it.calories }
-            avgSpeed = stats.map { it.speed }.average()
-        }
-
-        tvTotalDistance.text = String.format(Locale.getDefault(), "Distanza: %.2f km", totalDist)
-        tvTotalCalories.text = "Calorie: $totalCal kcal"
-        tvAvgSpeed.text = String.format(Locale.getDefault(), "Vel. Media: %.1f km/h", avgSpeed)
-        
+        // Configurazione DURATA (sempre visibile)
         val hrs = duration / 3600
         val mins = (duration % 3600) / 60
         val secs = duration % 60
-        tvDuration.text = String.format(Locale.getDefault(), "Durata: %02d:%02d:%02d", hrs, mins, secs)
+        tvDuration.text = String.format(Locale.getDefault(), "Durata totale: %02d:%02d:%02d", hrs, mins, secs)
 
-        // Visualizzazione Obiettivo
-        if (arguments?.containsKey("goal_achieved") == true) {
-            val achieved = arguments?.getBoolean("goal_achieved") ?: false
-            val target = arguments?.getString("goal_target") ?: ""
-            cardGoalResult.visibility = View.VISIBLE
-            if (achieved) {
-                tvGoalStatus.text = "OBIETTIVO RAGGIUNTO! 🎉"
-                tvGoalStatus.setTextColor(Color.parseColor("#4CAF50"))
-                cardGoalResult.setStrokeColor(android.content.res.ColorStateList.valueOf(Color.parseColor("#4CAF50")))
-                tvGoalDetails.text = "Hai completato il tuo obiettivo di $target"
-            } else {
-                tvGoalStatus.text = "OBIETTIVO NON RAGGIUNTO 🏃"
-                tvGoalStatus.setTextColor(Color.parseColor("#F44336"))
-                cardGoalResult.setStrokeColor(android.content.res.ColorStateList.valueOf(Color.parseColor("#F44336")))
-                tvGoalDetails.text = "Ti mancava poco per raggiungere $target!"
-            }
+        // LOGICA CORSA SINGOLA vs GRUPPO
+        if (isGroup) {
+            gridSingle?.visibility = View.GONE
+            tvStatsHeader?.visibility = View.VISIBLE
+            rvStats?.visibility = View.VISIBLE
+        } else {
+            gridSingle?.visibility = View.VISIBLE
+            tvStatsHeader?.visibility = View.GONE
+            rvStats?.visibility = View.GONE
+            
+            val myStat = stats.firstOrNull()
+            tvTotalDistance?.text = String.format(Locale.getDefault(), "Distanza percorsa: %.2f km", myStat?.distance ?: 0.0)
+            tvTotalCalories?.text = String.format(Locale.getDefault(), "Calorie bruciate = %d kcal", myStat?.calories ?: 0)
+            tvAvgSpeed?.text = String.format(Locale.getDefault(), "Velocità media = %.1f km/h", myStat?.speed ?: 0.0)
         }
 
-        rvStats.layoutManager = LinearLayoutManager(context)
-        rvStats.adapter = ParticipantStatsAdapter(stats, namesMap)
+        // Obiettivi
+        if (arguments?.containsKey("goal_achieved") == true) {
+            val achieved = arguments?.getBoolean("goal_achieved") ?: false
+            cardGoalResult?.visibility = View.VISIBLE
+            tvGoalStatus?.text = if (achieved) "OBIETTIVO RAGGIUNTO! 🎉" else "OBIETTIVO NON RAGGIUNTO 🏃"
+            tvGoalStatus?.setTextColor(if (achieved) Color.parseColor("#4CAF50") else Color.parseColor("#F44336"))
+        }
 
+        // Adapter Statistiche
+        rvStats?.layoutManager = LinearLayoutManager(context)
+        rvStats?.adapter = ParticipantStatsAdapter(stats, namesMap)
+
+        // Adapter Foto
         if (photos.isEmpty()) {
-            view.findViewById<View>(R.id.tvPhotosHeader).visibility = View.GONE
-            rvPhotos.visibility = View.GONE
+            view.findViewById<View>(R.id.tvPhotosHeader)?.visibility = View.GONE
+            rvPhotos?.visibility = View.GONE
         } else {
-            val photosHeader = view.findViewById<TextView>(R.id.tvPhotosHeader)
-            photosHeader.text = "Foto (Tocca per scegliere la copertina)"
-            
-            rvPhotos.layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
+            rvPhotos?.layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
             val photosAdapter = GroupPhotosAdapter(photos, isSelectionEnabled = true, selectedPhotoUrl = initialCoverUrl) { url ->
                 updateCoverInFirebase(url)
             }
-            rvPhotos.adapter = photosAdapter
+            rvPhotos?.adapter = photosAdapter
         }
 
-        btnClose.setOnClickListener {
-            if (parentFragmentManager.backStackEntryCount > 0) {
-                parentFragmentManager.popBackStack()
-            } else {
+        // Chiusura
+        btnClose?.setOnClickListener {
+            val activity = activity as? MainActivity
+            if (activity != null) {
                 parentFragmentManager.beginTransaction().remove(this).commit()
+                activity.findViewById<View>(R.id.nav_home)?.performClick()
+            } else {
+                parentFragmentManager.popBackStack()
             }
         }
     }
@@ -163,11 +148,11 @@ class GroupRunSummaryFragment : Fragment() {
         val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
         val rId = runId ?: return
         val database = FirebaseDatabase.getInstance("https://maccproject-9de7e-default-rtdb.europe-west1.firebasedatabase.app").reference
-        
-        database.child("users").child(userId).child("recent_activities").child(rId)
-            .child("coverPhoto").setValue(url)
-            .addOnSuccessListener {
-                Toast.makeText(context, "Foto di copertina impostata!", Toast.LENGTH_SHORT).show()
+        database.child("users").child(userId).child("recent_activities").child(rId).child("coverPhoto").setValue(url)
+            .addOnSuccessListener { 
+                if (isAdded) {
+                    Toast.makeText(requireContext(), "Copertina aggiornata!", Toast.LENGTH_SHORT).show()
+                }
             }
     }
 }

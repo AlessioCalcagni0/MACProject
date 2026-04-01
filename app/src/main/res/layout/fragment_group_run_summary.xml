@@ -16,11 +16,11 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Riassunto Corsa"
-            android:textSize="24sp"
+            android:textSize="26sp"
             android:textStyle="bold"
             android:textColor="#333333"
             android:layout_gravity="center"
-            android:layout_marginBottom="16dp"/>
+            android:layout_marginBottom="24dp"/>
 
         <!-- Card Esito Obiettivo -->
         <com.google.android.material.card.MaterialCardView
@@ -52,125 +52,114 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:text="Hai superato il tuo obiettivo di 5.0 km"
+                    android:text="Hai superato il tuo obiettivo!"
                     android:textSize="14sp"
                     android:textColor="#666666"/>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Card Riassunto Globale -->
+        <!-- Card Durata Totale -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardGlobalStats"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             app:cardCornerRadius="16dp"
             app:cardElevation="4dp"
-            android:layout_marginBottom="20dp">
+            android:layout_marginBottom="24dp">
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:gravity="center"
+                android:padding="20dp">
+
                 <TextView
+                    android:id="@+id/tvSummaryDuration"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Statistiche Totali"
-                    android:textSize="18sp"
+                    android:text="Durata Totale: 00:00:00"
+                    android:textSize="22sp"
                     android:textStyle="bold"
-                    android:layout_marginBottom="12dp"/>
+                    android:textColor="#6200EE"
+                    android:gravity="center"/>
 
                 <GridLayout
+                    android:id="@+id/gridSingleStats"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:columnCount="2">
+                    android:layout_marginTop="16dp"
+                    android:columnCount="2"
+                    android:visibility="gone">
 
                     <TextView android:id="@+id/tvSummaryTotalDistance"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_columnWeight="1"
                         android:text="Distanza: 0.0 km"
-                        android:textSize="14sp" />
+                        android:textSize="16sp" />
 
                     <TextView android:id="@+id/tvSummaryTotalCalories"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_columnWeight="1"
                         android:text="Calorie: 0 kcal"
-                        android:textSize="14sp" />
+                        android:textSize="16sp" />
 
                     <TextView android:id="@+id/tvSummaryAvgSpeed"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_columnWeight="1"
-                        android:text="Velocità Media: 0.0 km/h"
-                        android:textSize="14sp"
-                        android:layout_marginTop="8dp"/>
-
-                    <TextView android:id="@+id/tvSummaryDuration"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_columnWeight="1"
-                        android:text="Durata: 00:00"
-                        android:textSize="14sp"
+                        android:text="Vel. Media: 0.0 km/h"
+                        android:textSize="16sp"
                         android:layout_marginTop="8dp"/>
                 </GridLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/cardParticipants"
+        <TextView
+            android:id="@+id/tvStatsHeader"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Dettagli Partecipanti"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="#333333"
+            android:layout_marginBottom="12dp"/>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvSummaryStats"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:cardCornerRadius="16dp"
-            app:cardElevation="4dp"
-            android:layout_marginBottom="20dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:id="@+id/tvStatsHeader"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Dettaglio Partecipanti"
-                    android:textSize="18sp"
-                    android:textStyle="bold"
-                    android:layout_marginBottom="12dp"/>
-
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/rvSummaryStats"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:nestedScrollingEnabled="false" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+            android:layout_marginBottom="24dp"
+            android:nestedScrollingEnabled="false" />
 
         <TextView
             android:id="@+id/tvPhotosHeader"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Foto della Corsa"
-            android:textSize="18sp"
+            android:textSize="20sp"
             android:textStyle="bold"
+            android:textColor="#333333"
             android:layout_marginBottom="12dp"/>
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rvSummaryPhotos"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
+            android:layout_marginBottom="32dp"
             android:nestedScrollingEnabled="false" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnCloseSummary"
             android:layout_width="match_parent"
-            android:layout_height="60dp"
+            android:layout_height="64dp"
             android:text="TORNA ALLA HOME"
-            app:cornerRadius="30dp"
-            android:backgroundTint="#6200EE"/>
+            android:textSize="18sp"
+            android:textStyle="bold"
+            app:cornerRadius="32dp"
+            android:backgroundTint="#6200EE"
+            android:layout_marginBottom="20dp"/>
 
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>
