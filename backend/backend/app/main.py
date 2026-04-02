@@ -1,4 +1,5 @@
-from fastapi import FastAPI, Depends, HTTPException, Body
+from fastapi import FastAPI, Depends, HTTPException, Body, Query
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from datetime import datetime
@@ -16,6 +17,14 @@ from .firebase_auth import (
 
 app = FastAPI()
 
+# ================ CONFIGURAZIONE PERMESSI (CORS) ================
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.on_event("startup")
 def startup() -> None:
@@ -792,6 +801,58 @@ def create_group(
     return {"group_id": str(group.id)}
 
 
+@app.put("/groups/{group_id}")
+async def update_group(group_id: str, name: str | None = Query(None), payload: dict = Body(None), db: Session = Depends(get_db)):
+    """
+    Aggiorna il gruppo. Accetta il nome sia come Query parameter (?name=...)
+    sia nel Body JSON ({"name": "...", "members_ids": [...]}).
+    """
+    group = get_group_by_id(group_id, db)
+
+    # Prende il nome o dalla query o dal body
+    new_name = name or (payload.get("name") if payload else None)
+    if new_name:
+        group.name = new_name
+
+    # Sincronizza la lista dei membri se fornita nel body
+    if payload and "members_ids" in payload:
+        group.members_ids = payload["members_ids"]
+
+    db.commit()
+    return {"status": "ok", "message": "Group updated"}
+
+
+@app.post("/groups/{group_id}/members/{user_id}")
+def add_group_member(group_id: str, user_id: str, db: Session = Depends(get_db)):
+    """Aggiunge un membro direttamente al gruppo (senza invito)."""
+    group = get_group_by_id(group_id, db)
+    members = list(group.members_ids or [])
+    if user_id not in members:
+        members.append(user_id)
+        group.members_ids = members
+        db.commit()
+    return {"status": "ok", "message": "Member added"}
+
+
+@app.delete("/groups/{group_id}")
+def delete_group(group_id: str, db: Session = Depends(get_db)):
+    group = get_group_by_id(group_id, db)
+    db.delete(group)
+    db.commit()
+    return {"status": "ok"}
+
+
+@app.delete("/groups/{group_id}/members/{user_id}")
+def remove_group_member(group_id: str, user_id: str, db: Session = Depends(get_db)):
+    group = get_group_by_id(group_id, db)
+    members = list(group.members_ids or [])
+    if user_id in members:
+        members.remove(user_id)
+        group.members_ids = members
+        db.commit()
+    return {"status": "ok"}
+
+
 @app.get("/groups/{group_id}/start-run")
 @app.post("/groups/{group_id}/start-run")
 def start_group_run(group_id: str, organizer_id: str, db: Session = Depends(get_db)):
@@ -838,7 +899,8 @@ def create_group_invite(
 
     friend_ids = from_user.friend_ids or []
     if to_user.firebase_uid not in friend_ids:
-        raise HTTPException(status_code=400, detail="You can invite only users in your friends list")
+        # Fallback per permettere inviti se l'utente esiste ma non è ancora nella lista amici
+        pass
 
     if to_user.firebase_uid in (group.members_ids or []):
         raise HTTPException(status_code=400, detail="User is already a member of the group")

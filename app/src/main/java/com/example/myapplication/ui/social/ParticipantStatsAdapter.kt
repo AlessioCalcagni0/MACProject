@@ -40,14 +40,25 @@ class ParticipantStatsAdapter(
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val s = stats[position]
         val isMe = s.userId == FirebaseAuth.getInstance().currentUser?.uid
-        
-        holder.tvName.text = namesMap[s.userId] ?: "Runner"
-        holder.tvDistance.text = String.format(Locale.getDefault(), "Distanza percorsa: %.2f km", s.distance)
-        holder.tvCalories.text = String.format(Locale.getDefault(), "Calorie bruciate: %d kcal", s.calories)
-        holder.tvSpeed.text = String.format(Locale.getDefault(), "Velocità media: %.1f km/h", s.speed)
+
+        // Cerchiamo il nome nella mappa. Se è l'utente corrente, usiamo "Tu".
+        // Se non troviamo il nome nella mappa, usiamo "Partecipante" invece di "Runner"
+        // per renderlo più professionale, oppure l'ID troncato se preferisci.
+        val displayName = when {
+            isMe -> "Tu"
+            namesMap.containsKey(s.userId) -> namesMap[s.userId]
+            else -> "Partecipante ${position + 1}" // Almeno distingue i vari corridori
+        }
+
+        holder.tvName.text = displayName
+        holder.tvDistance.text =
+            String.format(Locale.getDefault(), "Distanza percorsa: %.2f km", s.distance)
+        holder.tvCalories.text =
+            String.format(Locale.getDefault(), "Calorie bruciate: %d kcal", s.calories)
+        holder.tvSpeed.text =
+            String.format(Locale.getDefault(), "Velocità media: %.1f km/h", s.speed)
 
         holder.indicator.setBackgroundColor(if (isMe) Color.BLUE else Color.RED)
     }
-
     override fun getItemCount() = stats.size
 }

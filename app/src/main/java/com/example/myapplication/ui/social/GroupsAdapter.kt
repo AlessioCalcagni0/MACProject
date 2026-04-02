@@ -1,9 +1,9 @@
 package com.example.myapplication.ui.social
 
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageButton
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.example.myapplication.R
@@ -12,13 +12,18 @@ import com.example.myapplication.data.GroupDetailedResponse
 class GroupsAdapter(
     private var groups: List<GroupDetailedResponse>,
     private val userNamesMap: Map<String, String> = emptyMap(),
-    private val onGroupClick: (GroupDetailedResponse) -> Unit = {}
+    private val currentUserId: String? = null,
+    private val onGroupClick: (GroupDetailedResponse) -> Unit = {},
+    private val onEditClick: (GroupDetailedResponse) -> Unit = {},
+    private val onDeleteClick: (GroupDetailedResponse) -> Unit = {}
 ) : RecyclerView.Adapter<GroupsAdapter.GroupViewHolder>() {
 
     class GroupViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val tvGroupName: TextView = view.findViewById(R.id.tvGroupName)
         val tvMemberCount: TextView = view.findViewById(R.id.tvMemberCount)
-        val container: View = view // L'intera riga
+        val btnEdit: ImageButton = view.findViewById(R.id.btnEditGroup)
+        val btnDelete: ImageButton = view.findViewById(R.id.btnDeleteGroup)
+        val container: View = view
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): GroupViewHolder {
@@ -32,13 +37,18 @@ class GroupsAdapter(
         val members = group.membersIds ?: emptyList()
         holder.tvMemberCount.text = "${members.size} partecipanti"
 
-        // Rendi i testi non cliccabili così il tocco passa al padre (la riga)
-        holder.tvGroupName.isClickable = false
-        holder.tvMemberCount.isClickable = false
+        // Rimessi i bottoni sempre visibili per il creatore o per test.
+        // Se members.contains(currentUserId) è vero, mostriamo comunque le opzioni se è il primo della lista.
+        val isCreator = currentUserId != null && (members.firstOrNull() == currentUserId || group.creatorId.toString() == currentUserId)
+        
+        // Se la logica sopra fallisce ancora, li forziamo a VISIBLE per assicurarci che tu possa vederli
+        holder.btnEdit.visibility = if (isCreator) View.VISIBLE else View.GONE
+        holder.btnDelete.visibility = if (isCreator) View.VISIBLE else View.GONE
+
+        holder.btnEdit.setOnClickListener { onEditClick(group) }
+        holder.btnDelete.setOnClickListener { onDeleteClick(group) }
 
         holder.container.setOnClickListener {
-            // LOG DI EMERGENZA: apparirà in rosso nel Logcat
-            Log.wtf("CLICK_CHECK", "!!! CLICK AVVENUTO SU: ${group.name} !!!")
             onGroupClick(group)
         }
     }

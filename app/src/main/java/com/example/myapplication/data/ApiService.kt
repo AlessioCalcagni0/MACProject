@@ -41,7 +41,7 @@ interface ApiService {
     @PUT("groups/{groupId}")
     suspend fun updateGroup(
         @Path("groupId") groupId: String,
-        @Query("name") newName: String
+        @Body payload: Map<String, @JvmSuppressWildcards Any>
     ): SimpleStatusResponse
 
     @DELETE("groups/{groupId}")
@@ -67,6 +67,18 @@ interface ApiService {
         @Query("user_id") userId: String,
         @Query("status") status: String
     ): GroupInviteActionResponse
+
+    @POST("groups/{groupId}/members/{userId}")
+    suspend fun addGroupMember(
+        @Path("groupId") groupId: String,
+        @Path("userId") userId: String
+    ): SimpleStatusResponse
+
+    @DELETE("groups/{groupId}/members/{userId}")
+    suspend fun removeGroupMember(
+        @Path("groupId") groupId: String,
+        @Path("userId") userId: String
+    ): SimpleStatusResponse
 
     // --- GESTIONE AMICI ---
 

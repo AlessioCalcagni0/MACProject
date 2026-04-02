@@ -20,10 +20,7 @@ import com.example.myapplication.ui.home.MainActivity
 import com.google.android.material.button.MaterialButton
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 
 class SocialFragment : Fragment() {
 
@@ -38,6 +35,7 @@ class SocialFragment : Fragment() {
     private lateinit var tvActiveRunInvitesHeader: TextView
     private lateinit var btnStartGroupRun: MaterialButton
     private lateinit var btnCreateGroup: MaterialButton
+    private lateinit var btnAddFriend: MaterialButton
 
     private var myGroupsList: List<GroupDetailedResponse> = emptyList()
     private var friendsList: List<UserResponse> = emptyList()
@@ -57,6 +55,7 @@ class SocialFragment : Fragment() {
         initViews(view)
         loadData()
         listenForRunInvites()
+        listenForFriendNotifications()
     }
 
     private fun initViews(view: View) {
@@ -71,6 +70,7 @@ class SocialFragment : Fragment() {
         tvActiveRunInvitesHeader = view.findViewById(R.id.tvActiveRunInvitesHeader)
         btnStartGroupRun = view.findViewById(R.id.btnStartGroupRun)
         btnCreateGroup = view.findViewById(R.id.btnCreateGroup)
+        btnAddFriend = view.findViewById(R.id.btnAddFriend)
 
         rvFriends.layoutManager = LinearLayoutManager(context)
         rvFriendRequests.layoutManager = LinearLayoutManager(context)
@@ -80,6 +80,7 @@ class SocialFragment : Fragment() {
 
         btnStartGroupRun.setOnClickListener { showSelectGroupForRunDialog() }
         btnCreateGroup.setOnClickListener { showCreateGroupDialog() }
+        btnAddFriend.setOnClickListener { showAddFriendDialog() }
     }
 
     private fun loadData() {
@@ -102,7 +103,14 @@ class SocialFragment : Fragment() {
 
                 withContext(Dispatchers.Main) {
                     rvFriends.adapter = FriendsAdapter(friendsList)
-                    rvGroups.adapter = GroupsAdapter(myGroupsList, allUsersMap) { group -> showGroupDetailsDialog(group) }
+                    rvGroups.adapter = GroupsAdapter(
+                        myGroupsList,
+                        allUsersMap,
+                        userId,
+                        onGroupClick = { group -> showGroupDetailsDialog(group) },
+                        onEditClick = { group -> showEditGroupDialog(group) },
+                        onDeleteClick = { group -> confirmDeleteGroup(group) }
+                    )
 
                     tvRequestsHeader.visibility = if (friendRequests.isNotEmpty()) View.VISIBLE else View.GONE
                     rvFriendRequests.visibility = if (friendRequests.isNotEmpty()) View.VISIBLE else View.GONE
@@ -118,9 +126,164 @@ class SocialFragment : Fragment() {
         }
     }
 
+    private fun showAddFriendDialog() {
+        val etEmail = EditText(requireContext())
+        etEmail.hint = "Email dell'amico"
+        etEmail.inputType = android.text.InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("Aggiungi Amico")
+            .setMessage("Inserisci l'email dell'utente che vuoi aggiungere")
+            .setView(etEmail)
+            .setPositiveButton("Invia Richiesta") { _, _ ->
+                val email = etEmail.text.toString().trim()
+                if (email.isNotBlank()) {
+                    sendFriendRequest(email)
+                }
+            }
+            .setNegativeButton("Annulla", null)
+            .show()
+    }
+
+    private fun sendFriendRequest(email: String) {
+        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val currentUserName = FirebaseAuth.getInstance().currentUser?.displayName ?: FirebaseAuth.getInstance().currentUser?.email ?: "Un utente"
+
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                RetrofitClient.api.sendFriendRequest(currentUserId, email)
+                val searchResults = RetrofitClient.api.searchUsers(email)
+                val targetUser = searchResults.find { it.email.equals(email, ignoreCase = true) }
+                
+                targetUser?.let {
+                    database.child("friend_notifications").child(it.id).push().setValue(
+                        mapOf(
+                            "fromName" to currentUserName,
+                            "fromId" to currentUserId,
+                            "timestamp" to ServerValue.TIMESTAMP
+                        )
+                    )
+                }
+
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Richiesta inviata a $email", Toast.LENGTH_SHORT).show()
+                    loadData()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error sending friend request: ${e.message}")
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Errore: utente non trovato o richiesta già inviata", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun listenForFriendNotifications() {
+        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        database.child("friend_notifications").child(userId).addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (snapshot.exists()) {
+                    loadData()
+                }
+            }
+            override fun onCancelled(error: DatabaseError) {}
+        })
+    }
+
     private fun showGroupDetailsDialog(group: GroupDetailedResponse) {
-        val members = group.membersIds?.map { allUsersMap[it] ?: "Utente ($it)" } ?: emptyList()
-        AlertDialog.Builder(requireContext()).setTitle(group.name).setMessage("Membri:\n\n" + members.joinToString("\n")).setPositiveButton("Chiudi", null).show()
+        val members = group.membersIds?.map { mId ->
+            allUsersMap[mId] ?: "Utente ($mId)"
+        } ?: emptyList()
+        AlertDialog.Builder(requireContext())
+            .setTitle(group.name)
+            .setMessage("Membri attuali:\n\n" + members.joinToString("\n"))
+            .setPositiveButton("Chiudi", null)
+            .show()
+    }
+
+    private fun showEditGroupDialog(group: GroupDetailedResponse) {
+        val dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_create_group, null)
+        val etGroupName = dialogView.findViewById<EditText>(R.id.etGroupName)
+        val rvInvite = dialogView.findViewById<RecyclerView>(R.id.rvInviteFriends)
+        
+        etGroupName.setText(group.name)
+        rvInvite.layoutManager = LinearLayoutManager(context)
+        
+        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+        val currentMemberIds = group.membersIds ?: emptyList()
+        
+        val allManageableUsers = mutableListOf<UserResponse>()
+        allManageableUsers.addAll(friendsList)
+        
+        currentMemberIds.forEach { mId ->
+            if (mId != currentUserId && allManageableUsers.none { it.id == mId }) {
+                val name = allUsersMap[mId] ?: "Partecipante"
+                allManageableUsers.add(UserResponse(mId, "", name))
+            }
+        }
+
+        val adapter = InviteFriendsAdapter(allManageableUsers, currentMemberIds)
+        rvInvite.adapter = adapter
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("Modifica Gruppo")
+            .setView(dialogView)
+            .setPositiveButton("Salva") { _, _ ->
+                val newName = etGroupName.text.toString()
+                if (newName.isNotBlank()) {
+                    val selectedIds = adapter.getSelectedFriends()
+                    updateGroup(group.realId, newName, selectedIds, currentMemberIds)
+                }
+            }
+            .setNegativeButton("Annulla", null)
+            .show()
+    }
+
+    private fun updateGroup(groupId: String, name: String, newMemberIds: List<String>, oldMemberIds: List<String>) {
+        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        CoroutineScope(Dispatchers.IO).launch {
+            // 1. Aggiorna nome e membri in un'unica chiamata atomica (evita errori simultanei)
+            try {
+                val payload = mapOf(
+                    "name" to name,
+                    "members_ids" to newMemberIds
+                )
+                RetrofitClient.api.updateGroup(groupId, payload)
+                
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Modifiche salvate con successo", Toast.LENGTH_SHORT).show()
+                    loadData()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error updating group: ${e.message}")
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Errore nel salvataggio", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun confirmDeleteGroup(group: GroupDetailedResponse) {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Elimina Gruppo")
+            .setMessage("Sei sicuro di voler eliminare definitivamente '${group.name}'?")
+            .setPositiveButton("Elimina") { _, _ -> deleteGroup(group.realId) }
+            .setNegativeButton("Annulla", null)
+            .show()
+    }
+
+    private fun deleteGroup(groupId: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                RetrofitClient.api.deleteGroup(groupId)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Gruppo eliminato", Toast.LENGTH_SHORT).show()
+                    loadData()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error deleting group: ${e.message}")
+            }
+        }
     }
 
     private fun showSelectGroupForRunDialog() {
@@ -129,7 +292,12 @@ class SocialFragment : Fragment() {
         val rvSelect = dialogView.findViewById<RecyclerView>(R.id.rvSelectGroup)
         rvSelect.layoutManager = LinearLayoutManager(context)
         val dialog = AlertDialog.Builder(requireContext()).setTitle("Inizia corsa di gruppo").setView(dialogView).setNegativeButton("Annulla", null).create()
-        rvSelect.adapter = GroupsAdapter(myGroupsList, allUsersMap) { group -> dialog.dismiss(); startGroupRunFlow(group) }
+        rvSelect.adapter = GroupsAdapter(
+            myGroupsList, 
+            allUsersMap,
+            FirebaseAuth.getInstance().currentUser?.uid,
+            onGroupClick = { group -> dialog.dismiss(); startGroupRunFlow(group) }
+        )
         dialog.show()
     }
 
@@ -147,7 +315,6 @@ class SocialFragment : Fragment() {
                     lobbyRef.removeValue().addOnCompleteListener {
                         val lobbyData = mapOf("status" to "waiting", "organizer" to userId)
                         lobbyRef.setValue(lobbyData)
-                        // Scriviamo il nome partecipante
                         lobbyRef.child("names").child(userId).setValue(userName)
                         lobbyRef.child(userId).setValue("ready")
                         
@@ -221,9 +388,16 @@ class SocialFragment : Fragment() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val res = RetrofitClient.api.createGroup(name, userId)
-                friendIds.forEach { RetrofitClient.api.inviteToGroup(res.id, userId, it) }
+                // Aggiungiamo i membri direttamente al momento della creazione (richiesta atomica)
+                val finalMembers = friendIds.toMutableList()
+                if (userId !in finalMembers) finalMembers.add(userId)
+                
+                RetrofitClient.api.updateGroup(res.id, mapOf("members_ids" to finalMembers))
+
                 withContext(Dispatchers.Main) { loadData() }
-            } catch (e: Exception) {}
+            } catch (e: Exception) {
+                Log.e(TAG, "Errore creazione gruppo: ${e.message}")
+            }
         }
     }
 

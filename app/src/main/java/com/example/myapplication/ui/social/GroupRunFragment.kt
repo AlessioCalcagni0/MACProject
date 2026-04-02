@@ -242,11 +242,42 @@ class GroupRunFragment : Fragment(), OnMapReadyCallback {
         btnStop.isEnabled = false
         Toast.makeText(context, "Chiusura corsa...", Toast.LENGTH_SHORT).show()
 
+        val boundsBuilder = LatLngBounds.Builder()
+        var hasPoints = false
+        participantPaths.values.forEach { path ->
+            path.forEach { point ->
+                boundsBuilder.include(point)
+                hasPoints = true
+            }
+        }
+
+        if (googleMap != null && hasPoints) {
+            try {
+                val bounds = boundsBuilder.build()
+                googleMap?.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 100))
+                
+                handler.postDelayed({
+                    googleMap?.snapshot { bitmap ->
+                        if (bitmap != null) {
+                            uploadMapSnapshot(bitmap) {
+                                finalizeTermination()
+                            }
+                        } else {
+                            finalizeTermination()
+                        }
+                    }
+                }, 1000)
+            } catch (e: Exception) {
+                finalizeTermination()
+            }
+        } else {
+            finalizeTermination()
+        }
+    }
+
+    private fun finalizeTermination() {
         lobbyRef.child("status").setValue("finished").addOnCompleteListener {
             saveGroupRunToHistory(participantStatsMap.values.toList(), latestPhotos)
-            if (googleMap != null) {
-                googleMap?.snapshot { bitmap -> if (bitmap != null) uploadMapSnapshot(bitmap) {} }
-            }
             finishRunAndShowSummary()
         }
     }
@@ -345,7 +376,15 @@ class GroupRunFragment : Fragment(), OnMapReadyCallback {
         val baos = ByteArrayOutputStream()
         bitmap.compress(Bitmap.CompressFormat.JPEG, 70, baos)
         storageRef.putBytes(baos.toByteArray()).addOnSuccessListener {
-            storageRef.downloadUrl.addOnSuccessListener { uri -> photosRef.push().setValue(uri.toString()).addOnCompleteListener { onComplete() } }.addOnFailureListener { onComplete() }
+            storageRef.downloadUrl.addOnSuccessListener { uri -> 
+                val url = uri.toString()
+                photosRef.push().setValue(url).addOnCompleteListener { 
+                    if (!latestPhotos.contains(url)) {
+                        latestPhotos.add(0, url)
+                    }
+                    onComplete() 
+                } 
+            }.addOnFailureListener { onComplete() }
         }.addOnFailureListener { onComplete() }
     }
 

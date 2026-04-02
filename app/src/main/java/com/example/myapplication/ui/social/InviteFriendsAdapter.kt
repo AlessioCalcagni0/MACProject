@@ -9,10 +9,14 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.myapplication.R
 import com.example.myapplication.data.UserResponse
 
-class InviteFriendsAdapter(private val friends: List<UserResponse>) :
-    RecyclerView.Adapter<InviteFriendsAdapter.InviteViewHolder>() {
+class InviteFriendsAdapter(
+    private val friends: List<UserResponse>,
+    private val initialSelectedIds: List<String> = emptyList()
+) : RecyclerView.Adapter<InviteFriendsAdapter.InviteViewHolder>() {
 
-    private val selectedFriendIds = mutableSetOf<String>()
+    private val selectedFriendIds = mutableSetOf<String>().apply {
+        addAll(initialSelectedIds)
+    }
 
     class InviteViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val tvName: TextView = view.findViewById(R.id.tvFriendName)
