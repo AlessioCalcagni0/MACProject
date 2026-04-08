@@ -1,4 +1,4 @@
-# Running Tracker App
+# Pacemate App
 
 Mobile and Cloud Computing Project
 
