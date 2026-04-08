@@ -22,29 +22,10 @@ The system is built using:
 - Firebase Authentication
 
 ### Target Users
-The app is built for runners of all levels—from beginners looking to establish a routine to advanced athletes who want detailed performance metrics, weather-based insights and performance statistics.
+The app is built for runners of all levels from beginners looking to establish a routine to advanced athletes who want detailed performance metrics, weather-based insights and performance statistics.
 
 ### How It Works
 The user starts a run on the mobile app (selecting his goal from: time, distance calories), which actively pings GPS and device sensors to track their route, speed, and distance. This data is processed locally with concurrent tasks to ensure a smooth UI, while communicating asynchronously with a FastAPI backend. Photos, run history, weather data, and social interactions are saved to a PostgreSQL database hosted in the cloud, allowing users to review their performance and connect with friends.
-
----
-
-## Architecture
-Android App
-
-↓ (HTTP REST API)
-
-FastAPI Backend (Cloud Run)
-
-↓
-
-PostgreSQL (Cloud SQL)
-
-Additional services:
-- Firebase Authentication (login)
-- Google Maps SDK (map visualization)
-- Open-Meteo API (weather)
-
 
 ---
 
@@ -101,15 +82,7 @@ Here is how the specific course requirements were fulfilled in this project:
 7. **Concurrency**: Used Kotlin Coroutines and ViewModel scopes on the frontend to ensure background location tracking and API calls do not block the main thread.
 8. **Additional Cloud Features**: Deployed the backend server using Google Cloud Run (and utilized Google Maps API for route rendering).
 9. **REST API on Remote Server**: Developed a FastAPI (Python) server, containerized via Docker, and hosted remotely to process all client requests
-10. **Storage Service**: 
-- PostgreSQL database
-- Stores:
-  - users
-  - runs
-  - route_points
-  - photos
-  - groups
-  - invites
+10. **Storage Service**: Connected the FastAPI backend to a Google Cloud SQL (PostgreSQL) database to persist user profiles, friends lists, goals, and run history.
 
 ---
 
@@ -124,13 +97,7 @@ MACProject/
 
 │   │   ├── ui/
 
-│   │   │   ├── run/
 
-│   │   │   │   └── RunFragment.kt
-
-│   │   │   ├── home/
-
-│   │   │   │   └── HomeFragment.kt
 
 │
 │   ├── res/
@@ -177,30 +144,7 @@ MACProject/
 - Python 3.10+
 - A running instance of PostgreSQL (local or cloud)
 - Google Cloud account
-- Firebase project
-
-1. Firebase Service Account Setup
-You must configure your Firebase credentials for the backend to authenticate users properly.
-
-Open the Firebase Console.
-
-Select your project.
-
-Go to Project settings.
-
-Open the Service accounts tab.
-
-Click Generate new private key.
-
-Download the JSON file.
-
-Rename it to exactly firebase-service-account.json.
-
-Place it in the backend secrets folder so the final path on your machine is:
-backend/secrets/firebase-service-account.json
-(Note: The expected path inside the Docker container is /app/secrets/firebase-service-account.json)
-
-⚠️ IMPORTANT: Do not commit the real JSON file to git! You can use firebase-service-account.example.json only as a shape reference.
+- Firebase project (Follow the steps in the README in the folder path backend/backend/secrets)
 
 ---
 
