@@ -28,20 +28,23 @@ object AuthFirebaseDataSource {
         }
     }
 
-    suspend fun register(name: String, email: String, password: String): Boolean {
+    suspend fun register(name: String, surname: String, email: String, password: String): Boolean {
         return try {
             val result = auth.createUserWithEmailAndPassword(email, password).await()
             val user = result.user
             
+            val displayName = "$name $surname".trim()
             val profileUpdates = UserProfileChangeRequest.Builder()
-                .setDisplayName(name)
+                .setDisplayName(displayName)
                 .build()
             user?.updateProfile(profileUpdates)?.await()
 
             user?.getIdToken(true)?.await()?.token?.let { token ->
                 val userData = mapOf(
                     "name" to name,
-                    "email" to email
+                    "surname" to surname,
+                    "email" to email,
+                    "display_name" to displayName
                 )
                 try {
                     RetrofitClient.api.syncUser("Bearer $token", userData)

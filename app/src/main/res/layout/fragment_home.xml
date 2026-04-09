@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F5F5F5">
+    android:background="#000000">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -16,21 +16,21 @@
             android:id="@+id/tvWelcome"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Benvenuto su Pacemate"
-            android:textSize="22sp"
+            android:text="Welcome to Pacemate"
+            android:textSize="28sp"
             android:textStyle="bold"
-            android:textColor="#333333" />
+            android:textColor="#FFFFFF" />
 
         <TextView
             android:id="@+id/tvUserEmailFragment"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="Utente"
+            android:layout_marginTop="4dp"
+            android:text=""
             android:textSize="16sp"
-            android:textColor="#777777" />
+            android:textColor="#BBBBBB" />
 
-        <!-- Sezione Meteo -->
+        <!-- Sezione Meteo Ripristinata -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardWeather"
             android:layout_width="match_parent"
@@ -55,7 +55,7 @@
                         android:id="@+id/tvCity"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Caricamento meteo..."
+                        android:text="Loading weather.."
                         android:textSize="18sp"
                         android:textStyle="bold"
                         android:textColor="#FFFFFF" />
@@ -105,7 +105,7 @@
                     android:id="@+id/tvRunningAdvice"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Attendere i dati per il consiglio sulla corsa..."
+                    android:text="Waiting data for running advices..."
                     android:textSize="15sp"
                     android:textStyle="italic"
                     android:textColor="#FFFFFF"
@@ -114,32 +114,33 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Attività Recenti in un Box Scrollabile -->
+        <!-- Attività Recenti -->
         <TextView
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="Attività Recenti"
-            android:textSize="18sp"
+            android:layout_marginTop="32dp"
+            android:text="Recent activities"
+            android:textSize="20sp"
             android:textStyle="bold"
-            android:textColor="#333333" />
+            android:textColor="#FFFFFF" />
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
-            android:layout_height="300dp"
-            android:layout_marginTop="12dp"
-            app:cardCornerRadius="16dp"
-            app:cardElevation="2dp"
-            app:strokeWidth="1dp"
-            app:strokeColor="#EEEEEE">
+            android:layout_height="wrap_content"
+            android:minHeight="200dp"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="24dp"
+            app:cardCornerRadius="24dp"
+            app:cardElevation="4dp"
+            app:strokeWidth="0dp">
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvRecentActivities"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:padding="8dp"
-                android:clipToPadding="false"
-                android:scrollbars="vertical" />
+                android:layout_height="wrap_content"
+                android:padding="12dp"
+                android:background="#FFFFFF"
+                android:clipToPadding="false" />
 
         </com.google.android.material.card.MaterialCardView>
 

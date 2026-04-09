@@ -38,8 +38,11 @@ def root():
     return {"message": "Backend running"}
 
 
-def firebase_uid_to_uuid(firebase_uid: str) -> uuid.UUID:
-    return uuid.uuid5(uuid.NAMESPACE_URL, firebase_uid)
+def firebase_uid_to_uuid(firebase_uid: str | None) -> uuid.UUID:
+    if not firebase_uid:
+        # Fallback to a random UUID if uid is missing, though it shouldn't happen
+        return uuid.uuid4()
+    return uuid.uuid5(uuid.NAMESPACE_URL, str(firebase_uid))
 
 
 def split_full_name(full_name: str | None) -> tuple[str | None, str | None]:
@@ -130,22 +133,31 @@ def extract_user_profile(firebase_user: dict) -> tuple[str | None, str | None, s
     return name, surname, display_name
 
 
-def serialize_group(group: models.Group) -> dict:
+def serialize_group(group: models.Group, db: Session) -> dict:
+    members_ids = group.members_ids or []
+    members_names = {}
+    if members_ids:
+        users = db.query(models.User).filter(models.User.firebase_uid.in_(members_ids)).all()
+        for user in users:
+            members_names[user.firebase_uid] = user.display_name or user.email or "Unknown"
+
     return {
         "group_id": group.id,
         "name": group.name,
-        "creator_id": group.creator_id,
-        "members_ids": group.members_ids or [],
+        "creator_id": str(group.creator_id) if group.creator_id else None,
+        "members_ids": members_ids,
+        "members_names": members_names,
         "created_at": group.created_at.isoformat() if group.created_at else None,
     }
 
 
 def sync_user_from_firebase(firebase_user: dict, db: Session) -> models.User:
     resolved_name, resolved_surname, resolved_display_name = extract_user_profile(firebase_user)
+    uid = firebase_user["uid"]
 
     user = (
         db.query(models.User)
-        .filter(models.User.firebase_uid == firebase_user["uid"])
+        .filter(models.User.firebase_uid == uid)
         .first()
     )
 
@@ -153,7 +165,8 @@ def sync_user_from_firebase(firebase_user: dict, db: Session) -> models.User:
         user = models.User(
             name=resolved_name,
             surname=resolved_surname,
-            firebase_uid=firebase_user["uid"],
+            firebase_uid=uid,
+            derived_uuid=firebase_uid_to_uuid(uid),
             email=firebase_user.get("email"),
             display_name=resolved_display_name,
             provider=firebase_user.get("provider", "firebase"),
@@ -163,12 +176,13 @@ def sync_user_from_firebase(firebase_user: dict, db: Session) -> models.User:
         user.name = resolved_name or user.name or derive_name_fallback(
             email=firebase_user.get("email"),
             display_name=firebase_user.get("display_name") or firebase_user.get("name"),
-            uid=firebase_user.get("uid"),
+            uid=uid,
         )
         user.surname = resolved_surname
         user.email = firebase_user.get("email")
         user.display_name = resolved_display_name
         user.provider = firebase_user.get("provider", "firebase")
+        user.derived_uuid = firebase_uid_to_uuid(uid)
 
     db.commit()
     db.refresh(user)
@@ -188,6 +202,7 @@ def serialize_user(user: models.User) -> dict:
             fallback_email=user.email,
             fallback_uid=user.firebase_uid,
         ),
+        "weight": user.weight
     }
 
 
@@ -242,8 +257,8 @@ def serialize_group_invite(
         "group_id": invite.group_id,
         "group_name": group.name if group else None,
         "status": invite.status,
-        "invited_user": serialize_user(invited_user),
-        "invited_by": serialize_user(invited_by),
+        "invited_user": serialize_user(invited_user) if invited_user else None,
+        "invited_by": serialize_user(invited_by) if invited_by else None,
         "created_at": invite.created_at.isoformat() if invite.created_at else None,
     }
 
@@ -277,9 +292,11 @@ def firebase_sync(
             name=resolved_name,
             surname=resolved_surname,
             firebase_uid=firebase_uid,
+            derived_uuid=firebase_uid_to_uuid(firebase_uid),
             email=email,
             display_name=resolved_display_name,
             provider=provider,
+            weight=70.0
         )
         db.add(user)
     else:
@@ -292,6 +309,7 @@ def firebase_sync(
         user.email = email
         user.display_name = resolved_display_name
         user.provider = provider
+        user.derived_uuid = firebase_uid_to_uuid(firebase_uid)
 
     db.commit()
     db.refresh(user)
@@ -320,6 +338,7 @@ def users_sync(
     resolved_email = normalize_optional_text(userData.email) or token_email
     resolved_name = normalize_optional_text(userData.name) or token_name
     resolved_surname = normalize_optional_text(userData.surname) or token_surname
+    resolved_weight = userData.weight if userData.weight is not None else 70.0
     resolved_display_name = (
         normalize_optional_text(userData.display_name)
         or build_display_name(
@@ -346,9 +365,11 @@ def users_sync(
             ),
             surname=resolved_surname,
             firebase_uid=firebase_uid,
+            derived_uuid=firebase_uid_to_uuid(firebase_uid),
             email=resolved_email,
             display_name=resolved_display_name,
             provider=provider,
+            weight=resolved_weight
         )
         db.add(user)
     else:
@@ -361,6 +382,9 @@ def users_sync(
         user.email = resolved_email
         user.display_name = resolved_display_name
         user.provider = provider
+        user.derived_uuid = firebase_uid_to_uuid(firebase_uid)
+        if userData.weight is not None:
+            user.weight = userData.weight
 
     db.commit()
     db.refresh(user)
@@ -401,14 +425,21 @@ def send_friend_request(
             .first()
         )
     elif to_user_email:
+        # Cerca via email in modo case-insensitive
+        target_email = to_user_email.strip().lower()
         to_user = (
             db.query(models.User)
-            .filter(models.User.email == to_user_email)
+            .filter(models.User.email.ilike(target_email))
             .first()
         )
         if not to_user:
-            firebase_target = get_firebase_user_by_email(to_user_email)
-            to_user = sync_user_from_firebase(firebase_target, db)
+            try:
+                firebase_target = get_firebase_user_by_email(to_user_email)
+                to_user = sync_user_from_firebase(firebase_target, db)
+            except HTTPException as e:
+                if e.status_code == 404:
+                     raise HTTPException(status_code=404, detail="Target user not found in Firebase")
+                raise e
 
     if not to_user:
         raise HTTPException(
@@ -452,7 +483,11 @@ def send_friend_request(
     db.commit()
     db.refresh(friend_request)
 
-    return {"status": "pending", "request_id": friend_request.id}
+    return {
+        "status": "pending",
+        "request_id": friend_request.id,
+        "to_user_id": to_user.firebase_uid
+    }
 
 
 @app.get("/friends/search", response_model=list[schemas.FriendSearchResponse])
@@ -484,6 +519,12 @@ def search_friends(query: str, user_id: str | None = None, limit: int = 20, db: 
         for user in users
         if not user_id or user.firebase_uid != user_id
     ][:limit]
+
+
+@app.get("/users/search", response_model=list[schemas.FriendUserResponse])
+def search_users(query: str, db: Session = Depends(get_db)):
+    """Alias for friends/search, used by RunFragment to find user by UID"""
+    return search_friends(query=query, db=db)
 
 
 @app.get("/friends/pending", response_model=list[schemas.FriendRequestResponse])
@@ -631,10 +672,11 @@ def get_run(run_id: str, db: Session = Depends(get_db)):
 @app.post("/runs/start")
 def start_run(user_id: str, db: Session = Depends(get_db)):
     try:
+        # Check if user_id is already a UUID
         user_uuid = uuid.UUID(user_id)
     except ValueError:
         user = get_or_sync_user_by_firebase_uid(user_id, db)
-        user_uuid = firebase_uid_to_uuid(user.firebase_uid)
+        user_uuid = user.derived_uuid or firebase_uid_to_uuid(user.firebase_uid)
 
     run = models.Run(id=uuid.uuid4(), user_id=user_uuid)
     db.add(run)
@@ -699,8 +741,16 @@ def end_run(run_id: str, distance: float, db: Session = Depends(get_db)):
     else:
         run.avg_speed = 0
 
-    # Stima calorie (esempio: 60 kcal per km)
-    run.calories = distance * 60
+    # Calcolo calorie in base al peso (default 70 se non trovato)
+    # Search user by derived_uuid
+    user = db.query(models.User).filter(models.User.derived_uuid == run.user_id).first()
+    if not user:
+        # Fallback if derived_uuid is not set yet
+        users = db.query(models.User).all()
+        user = next((u for u in users if firebase_uid_to_uuid(u.firebase_uid) == run.user_id), None)
+
+    weight = user.weight if user else 70.0
+    run.calories = distance * weight * 0.9
 
     db.commit()
 
@@ -756,7 +806,7 @@ def add_photo(run_id: str, image_url: str, latitude: float, longitude: float, db
 def get_all_groups(db: Session = Depends(get_db)):
     """Get all groups"""
     groups = db.query(models.Group).all()
-    return [serialize_group(group) for group in groups]
+    return [serialize_group(group, db) for group in groups]
 
 
 @app.get("/groups/{group_id}", response_model=schemas.GroupResponse)
@@ -770,7 +820,7 @@ def get_group(group_id: str, db: Session = Depends(get_db)):
     group = db.query(models.Group).filter(models.Group.id == group_uuid).first()
     if not group:
         raise HTTPException(status_code=404, detail="Group not found")
-    return serialize_group(group)
+    return serialize_group(group, db)
 
 
 @app.post("/groups")
@@ -792,7 +842,7 @@ def create_group(
 
     group = models.Group(
         name=resolved_name,
-        creator_id=firebase_uid_to_uuid(creator.firebase_uid),
+        creator_id=creator.firebase_uid,
         members_ids=[creator.firebase_uid]
     )
     db.add(group)
@@ -908,7 +958,7 @@ def create_group_invite(
     existing_invite = (
         db.query(models.GroupInvite)
         .filter(models.GroupInvite.group_id == group.id)
-        .filter(models.GroupInvite.user_id == firebase_uid_to_uuid(to_user.firebase_uid))
+        .filter(models.GroupInvite.user_id == (to_user.derived_uuid or firebase_uid_to_uuid(to_user.firebase_uid)))
         .filter(models.GroupInvite.status == "pending")
         .first()
     )
@@ -917,7 +967,7 @@ def create_group_invite(
 
     invite = models.GroupInvite(
         group_id=group.id,
-        user_id=firebase_uid_to_uuid(to_user.firebase_uid),
+        user_id=(to_user.derived_uuid or firebase_uid_to_uuid(to_user.firebase_uid)),
         group_run_id=None,
         invited_by_firebase_uid=from_user.firebase_uid,
         status="pending",
@@ -973,7 +1023,7 @@ def start_group_run_legacy(group_id: str, organizer_id: str, db: Session = Depen
         raise HTTPException(status_code=400, detail="Invalid group_id format")
 
     organizer = get_or_sync_user_by_firebase_uid(organizer_id, db)
-    organizer_uuid = firebase_uid_to_uuid(organizer.firebase_uid)
+    organizer_uuid = organizer.derived_uuid or firebase_uid_to_uuid(organizer.firebase_uid)
 
     group = db.query(models.Group).filter(models.Group.id == group_uuid).first()
 
@@ -997,7 +1047,7 @@ def start_group_run_legacy(group_id: str, organizer_id: str, db: Session = Depen
 
         member = db.query(models.User).filter(models.User.firebase_uid == member_id).first()
         if member:
-            invite_user_id = firebase_uid_to_uuid(member.firebase_uid)
+            invite_user_id = member.derived_uuid or firebase_uid_to_uuid(member.firebase_uid)
         else:
             try:
                 invite_user_id = uuid.UUID(member_id)
@@ -1050,7 +1100,7 @@ def get_group_run_invites(group_run_id: str, db: Session = Depends(get_db)):
 def get_user_invites(user_id: str, db: Session = Depends(get_db)):
     """Get all invites for a user identified by Firebase UID"""
     user = get_or_sync_user_by_firebase_uid(user_id, db)
-    user_uuid = firebase_uid_to_uuid(user.firebase_uid)
+    user_uuid = user.derived_uuid or firebase_uid_to_uuid(user.firebase_uid)
     invites = db.query(models.GroupInvite).filter(models.GroupInvite.user_id == user_uuid).all()
 
     groups = {
@@ -1086,7 +1136,7 @@ def get_user_invites(user_id: str, db: Session = Depends(get_db)):
 @app.get("/group-invites/pending", response_model=list[schemas.GroupInviteResponse])
 def get_pending_group_invites(user_id: str, db: Session = Depends(get_db)):
     user = get_or_sync_user_by_firebase_uid(user_id, db)
-    user_uuid = firebase_uid_to_uuid(user.firebase_uid)
+    user_uuid = user.derived_uuid or firebase_uid_to_uuid(user.firebase_uid)
     invites = (
         db.query(models.GroupInvite)
         .filter(models.GroupInvite.user_id == user_uuid)
@@ -1144,7 +1194,7 @@ def respond_invite(
     invite = get_group_invite_by_id(resolved_invite_id, db)
     user = get_or_sync_user_by_firebase_uid(resolved_user_id, db)
 
-    if invite.user_id != firebase_uid_to_uuid(user.firebase_uid):
+    if invite.user_id != (user.derived_uuid or firebase_uid_to_uuid(user.firebase_uid)):
         raise HTTPException(status_code=403, detail="This invite does not belong to the user")
 
     normalized_status = resolved_status.lower().strip()

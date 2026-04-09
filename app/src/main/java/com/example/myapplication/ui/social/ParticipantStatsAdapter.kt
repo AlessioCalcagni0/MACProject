@@ -41,22 +41,19 @@ class ParticipantStatsAdapter(
         val s = stats[position]
         val isMe = s.userId == FirebaseAuth.getInstance().currentUser?.uid
 
-        // Cerchiamo il nome nella mappa. Se è l'utente corrente, usiamo "Tu".
-        // Se non troviamo il nome nella mappa, usiamo "Partecipante" invece di "Runner"
-        // per renderlo più professionale, oppure l'ID troncato se preferisci.
         val displayName = when {
-            isMe -> "Tu"
+            isMe -> "You"
             namesMap.containsKey(s.userId) -> namesMap[s.userId]
-            else -> "Partecipante ${position + 1}" // Almeno distingue i vari corridori
+            else -> "Participant ${position + 1}"
         }
 
         holder.tvName.text = displayName
         holder.tvDistance.text =
-            String.format(Locale.getDefault(), "Distanza percorsa: %.2f km", s.distance)
+            String.format(Locale.getDefault(), "Distance: %.2f km", s.distance)
         holder.tvCalories.text =
-            String.format(Locale.getDefault(), "Calorie bruciate: %d kcal", s.calories)
+            String.format(Locale.getDefault(), "Calories: %d kcal", s.calories)
         holder.tvSpeed.text =
-            String.format(Locale.getDefault(), "Velocità media: %.1f km/h", s.speed)
+            String.format(Locale.getDefault(), "Average speed: %.1f km/h", s.speed)
 
         holder.indicator.setBackgroundColor(if (isMe) Color.BLUE else Color.RED)
     }

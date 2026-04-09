@@ -17,7 +17,7 @@
             android:id="@+id/tvInviteMessage"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="User ti ha invitato al gruppo NomeGruppo"
+            android:text="User inivited you to group NomeGruppo"
             android:textColor="#333333"
             android:textSize="16sp" />
 
@@ -33,7 +33,7 @@
                 style="@style/Widget.MaterialComponents.Button.TextButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Rifiuta"
+                android:text="Deny"
                 android:textColor="#F44336" />
 
             <com.google.android.material.button.MaterialButton
@@ -41,7 +41,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
-                android:text="Accetta" />
+                android:text="Accept" />
         </LinearLayout>
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

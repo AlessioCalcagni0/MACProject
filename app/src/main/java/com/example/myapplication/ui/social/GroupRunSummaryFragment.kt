@@ -64,94 +64,107 @@ class GroupRunSummaryFragment : Fragment() {
         val namesMap = arguments?.getSerializable("names_map") as? Map<String, String> ?: emptyMap()
         val duration = arguments?.getInt("duration") ?: 0
         val isGroup = arguments?.getBoolean("is_group", true) ?: true
+        
+        // RECUPERO RUN ID: Fondamentale per salvare la copertina
         runId = arguments?.getString("run_id")
         initialCoverUrl = arguments?.getString("cover_photo")
 
-        // Riferimenti UI
         val tvTitle = view.findViewById<TextView>(R.id.tvSummaryTitle)
         val tvDuration = view.findViewById<TextView>(R.id.tvSummaryDuration)
-        val tvTotalDistance = view.findViewById<TextView>(R.id.tvSummaryTotalDistance)
-        val tvTotalCalories = view.findViewById<TextView>(R.id.tvSummaryTotalCalories)
-        val tvAvgSpeed = view.findViewById<TextView>(R.id.tvSummaryAvgSpeed)
-        
         val cardGoalResult = view.findViewById<MaterialCardView>(R.id.cardGoalResult)
         val tvGoalStatus = view.findViewById<TextView>(R.id.tvGoalStatus)
         val tvGoalDetails = view.findViewById<TextView>(R.id.tvGoalDetails)
-
-        val gridSingle = view.findViewById<View>(R.id.gridSingleStats)
-        val tvStatsHeader = view.findViewById<TextView>(R.id.tvStatsHeader)
-        val rvStats = view.findViewById<RecyclerView>(R.id.rvSummaryStats)
+        val tvParticipantsHeader = view.findViewById<TextView>(R.id.tvParticipantsHeader)
+        val rvParticipantStats = view.findViewById<RecyclerView>(R.id.rvParticipantStats)
+        val cardSingleStats = view.findViewById<MaterialCardView>(R.id.cardSingleStats)
+        val tvSummaryTotalDistance = view.findViewById<TextView>(R.id.tvSummaryTotalDistance)
+        val tvSummaryTotalCalories = view.findViewById<TextView>(R.id.tvSummaryTotalCalories)
+        val tvSummaryAvgSpeed = view.findViewById<TextView>(R.id.tvSummaryAvgSpeed)
         val rvPhotos = view.findViewById<RecyclerView>(R.id.rvSummaryPhotos)
         val btnClose = view.findViewById<MaterialButton>(R.id.btnCloseSummary)
 
-        tvTitle.text = if (isGroup) "Riassunto Corsa di Gruppo" else "Riassunto Corsa Singola"
+        tvTitle.text = if (isGroup) "Group Run Summary" else "Single Run Summary"
 
-        // Configurazione DURATA (sempre visibile)
         val hrs = duration / 3600
         val mins = (duration % 3600) / 60
         val secs = duration % 60
-        tvDuration.text = String.format(Locale.getDefault(), "Durata totale: %02d:%02d:%02d", hrs, mins, secs)
+        tvDuration.text = String.format(Locale.getDefault(), "%02d:%02d:%02d", hrs, mins, secs)
 
-        // LOGICA CORSA SINGOLA vs GRUPPO
         if (isGroup) {
-            gridSingle?.visibility = View.GONE
-            tvStatsHeader?.visibility = View.VISIBLE
-            rvStats?.visibility = View.VISIBLE
+            tvParticipantsHeader.visibility = View.VISIBLE
+            rvParticipantStats.visibility = View.VISIBLE
+            cardSingleStats.visibility = View.GONE
+            rvParticipantStats.layoutManager = LinearLayoutManager(requireContext())
+            rvParticipantStats.adapter = ParticipantStatsAdapter(stats, namesMap)
         } else {
-            gridSingle?.visibility = View.VISIBLE
-            tvStatsHeader?.visibility = View.GONE
-            rvStats?.visibility = View.GONE
-            
+            tvParticipantsHeader.visibility = View.GONE
+            rvParticipantStats.visibility = View.GONE
+            cardSingleStats.visibility = View.VISIBLE
             val myStat = stats.firstOrNull()
-            tvTotalDistance?.text = String.format(Locale.getDefault(), "Distanza percorsa: %.2f km", myStat?.distance ?: 0.0)
-            tvTotalCalories?.text = String.format(Locale.getDefault(), "Calorie bruciate = %d kcal", myStat?.calories ?: 0)
-            tvAvgSpeed?.text = String.format(Locale.getDefault(), "Velocità media = %.1f km/h", myStat?.speed ?: 0.0)
+            tvSummaryTotalDistance.text = String.format(Locale.getDefault(), "%.2f km", myStat?.distance ?: 0.0)
+            tvSummaryTotalCalories.text = String.format(Locale.getDefault(), "%d kcal", myStat?.calories ?: 0)
+            tvSummaryAvgSpeed.text = String.format(Locale.getDefault(), "%.1f km/h", myStat?.speed ?: 0.0)
         }
 
-        // Obiettivi
         if (arguments?.containsKey("goal_achieved") == true) {
             val achieved = arguments?.getBoolean("goal_achieved") ?: false
             cardGoalResult?.visibility = View.VISIBLE
-            tvGoalStatus?.text = if (achieved) "OBIETTIVO RAGGIUNTO! 🎉" else "OBIETTIVO NON RAGGIUNTO 🏃"
-            tvGoalStatus?.setTextColor(if (achieved) Color.parseColor("#4CAF50") else Color.parseColor("#F44336"))
+            if (achieved) {
+                tvGoalStatus?.text = "GOAL ACHIEVED! 🎉"
+                tvGoalDetails?.text = "Congratulations! You have achieved your goal!"
+                tvGoalStatus?.setTextColor(Color.parseColor("#4CAF50"))
+                cardGoalResult?.setStrokeColor(Color.parseColor("#4CAF50"))
+            } else {
+                tvGoalStatus?.text = "GOAL NOT REACHED 🏃"
+                tvGoalDetails?.text = "Don't give up! Keep training to reach your next goal."
+                tvGoalStatus?.setTextColor(Color.parseColor("#F44336"))
+                cardGoalResult?.setStrokeColor(Color.parseColor("#F44336"))
+            }
         }
 
-        // Adapter Statistiche
-        rvStats?.layoutManager = LinearLayoutManager(context)
-        rvStats?.adapter = ParticipantStatsAdapter(stats, namesMap)
-
-        // Adapter Foto
         if (photos.isEmpty()) {
             view.findViewById<View>(R.id.tvPhotosHeader)?.visibility = View.GONE
             rvPhotos?.visibility = View.GONE
         } else {
             rvPhotos?.layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
-            val photosAdapter = GroupPhotosAdapter(photos, isSelectionEnabled = true, selectedPhotoUrl = initialCoverUrl) { url ->
+            rvPhotos?.adapter = GroupPhotosAdapter(photos, isSelectionEnabled = true, selectedPhotoUrl = initialCoverUrl) { url ->
+                initialCoverUrl = url // Aggiorniamo localmente
                 updateCoverInFirebase(url)
             }
-            rvPhotos?.adapter = photosAdapter
         }
 
-        // Chiusura
         btnClose?.setOnClickListener {
-            val activity = activity as? MainActivity
-            if (activity != null) {
-                parentFragmentManager.beginTransaction().remove(this).commit()
-                activity.findViewById<View>(R.id.nav_home)?.performClick()
+            val mainActivity = activity as? MainActivity
+            if (mainActivity != null) {
+                mainActivity.switchFragmentByTag("HOME")
             } else {
-                parentFragmentManager.popBackStack()
+                parentFragmentManager.beginTransaction().remove(this).commit()
             }
         }
     }
 
     private fun updateCoverInFirebase(url: String) {
         val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        val rId = runId ?: return
+        
+        // Se runId è nullo (possibile solo se c'è un errore a monte), non possiamo salvare
+        val rId = runId
+        if (rId == null) {
+            android.util.Log.e("Summary", "Impossibile aggiornare copertina: runId mancante")
+            return
+        }
+
         val database = FirebaseDatabase.getInstance("https://maccproject-9de7e-default-rtdb.europe-west1.firebasedatabase.app").reference
+        
+        // Percorso standard per le attività recenti
         database.child("users").child(userId).child("recent_activities").child(rId).child("coverPhoto").setValue(url)
             .addOnSuccessListener { 
                 if (isAdded) {
-                    Toast.makeText(requireContext(), "Copertina aggiornata!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "Cover updated!", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .addOnFailureListener {
+                if (isAdded) {
+                    Toast.makeText(requireContext(), "Error updating cover", Toast.LENGTH_SHORT).show()
                 }
             }
     }

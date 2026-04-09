@@ -1,5 +1,6 @@
 package com.example.myapplication.ui.social
 
+import android.graphics.Color
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -7,7 +8,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.Toolbar
 import androidx.fragment.app.Fragment
@@ -26,12 +26,14 @@ class GroupLobbyFragment : Fragment() {
     private var groupId: String? = null
     private var memberIds: List<String>? = null
     private var userNamesMap: Map<String, String>? = null
+
+    // Mappa unificata per gestire i nomi (inizialmente popolata dagli argomenti)
     private val dynamicNamesMap = mutableMapOf<String, String>()
 
     private lateinit var database: DatabaseReference
     private lateinit var lobbyRef: DatabaseReference
     private lateinit var membersValueListener: ValueEventListener
-    
+
     private val presentMembers = mutableMapOf<String, String>()
     private lateinit var adapter: LobbyMembersAdapter
     private var isOrganizer: Boolean = false
@@ -63,7 +65,10 @@ class GroupLobbyFragment : Fragment() {
             groupName = it.getString(ARG_GROUP_NAME)
             memberIds = it.getStringArrayList(ARG_MEMBERS)
             @Suppress("UNCHECKED_CAST")
-            userNamesMap = it.getSerializable(ARG_NAMES_MAP) as? Map<String, String>
+            val initialNames = it.getSerializable(ARG_NAMES_MAP) as? Map<String, String>
+            if (initialNames != null) {
+                dynamicNamesMap.putAll(initialNames)
+            }
         }
         database = FirebaseDatabase.getInstance(DB_URL).reference
     }
@@ -84,7 +89,8 @@ class GroupLobbyFragment : Fragment() {
         toolbar.setNavigationOnClickListener { requireActivity().onBackPressedDispatcher.onBackPressed() }
 
         rvMembers.layoutManager = LinearLayoutManager(context)
-        adapter = LobbyMembersAdapter(emptyList(), userNamesMap ?: emptyMap())
+        // Passiamo la dynamicNamesMap che contiene già i nomi iniziali
+        adapter = LobbyMembersAdapter(emptyList(), dynamicNamesMap)
         rvMembers.adapter = adapter
 
         val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
@@ -102,23 +108,22 @@ class GroupLobbyFragment : Fragment() {
         }
 
         btnStart.setOnClickListener { showNamingDialog() }
-
         listenToLobby()
     }
 
     private fun showNamingDialog() {
         val et = EditText(requireContext())
-        et.hint = groupName ?: "Corsa di Gruppo"
-        
+        et.hint = groupName ?: "Group Run"
+
         AlertDialog.Builder(requireContext())
-            .setTitle("Dai un nome alla tua corsa")
-            .setMessage("Inserisci un nome per questa sessione.")
+            .setTitle("Name your run")
+            .setMessage("Enter a name for this session.")
             .setView(et)
-            .setPositiveButton("Inizia") { _, _ ->
-                val runName = et.text.toString().ifBlank { groupName ?: "Corsa" }
+            .setPositiveButton("Start") { _, _ ->
+                val runName = et.text.toString().ifBlank { groupName ?: "Run" }
                 startGroupRun(runName)
             }
-            .setNegativeButton("Annulla", null)
+            .setNegativeButton("Cancel", null)
             .show()
     }
 
@@ -135,7 +140,7 @@ class GroupLobbyFragment : Fragment() {
     private fun listenToLobby() {
         val gId = groupId ?: return
         lobbyRef = database.child("lobbies").child(gId)
-        
+
         membersValueListener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (hasNavigatedToRun) return
@@ -143,29 +148,45 @@ class GroupLobbyFragment : Fragment() {
                 val status = snapshot.child("status").value as? String
                 if (status == "started") {
                     hasNavigatedToRun = true
-                    val runName = snapshot.child("runName").value as? String ?: groupName ?: "Corsa"
+                    val runName = snapshot.child("runName").value as? String ?: groupName ?: "Run"
                     navigateToGroupRunScreen(runName)
                     return
                 }
 
+                // 1. Aggiorna i nomi dal database se presenti nel nodo "names"
+                // Dentro listenToLobby -> onDataChange
                 val namesSnap = snapshot.child("names")
-                for (child in namesSnap.children) {
-                    val uId = child.key ?: continue
-                    val name = child.value?.toString() ?: continue
-                    dynamicNamesMap[uId] = name
-                }
-                adapter.updateNames(dynamicNamesMap)
+                Log.d("LobbyDebug", "Esiste il nodo names? ${namesSnap.exists()}")
 
+                if (namesSnap.exists()) {
+                    for (child in namesSnap.children) {
+                        val uId = child.key
+                        val name = child.value
+                        Log.d("LobbyDebug", "Trovato nel DB -> ID: $uId, Nome: $name")
+                        if (uId != null && name != null) {
+                            dynamicNamesMap[uId] = name.toString()
+                        }
+                    }
+                    adapter.updateNames(dynamicNamesMap)
+                } else {
+                    Log.e("LobbyDebug", "ERRORE: Il nodo 'names' non esiste sotto il lobby $gId")
+                }
+
+                // 2. Aggiorna lo stato dei membri (ready/waiting)
                 presentMembers.clear()
+                val reservedKeys = listOf("status", "organizer", "startTime", "runName", "names")
                 for (child in snapshot.children) {
-                    if (child.key !in listOf("status", "organizer", "startTime", "runName", "names")) {
+                    if (child.key !in reservedKeys) {
                         presentMembers[child.key ?: continue] = child.value.toString()
                     }
                 }
+
                 updateUI()
                 if (isOrganizer) checkAllReady()
             }
-            override fun onCancelled(error: DatabaseError) {}
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("Lobby", "Database error: ${error.message}")
+            }
         }
         lobbyRef.addValueEventListener(membersValueListener)
     }
@@ -178,34 +199,46 @@ class GroupLobbyFragment : Fragment() {
         if (readyCount >= totalNeeded && totalNeeded > 0) {
             btnStart.isEnabled = true
             btnStart.alpha = 1.0f
-            btnStart.text = "INIZIA CORSA"
+            btnStart.text = "START RUN"
         } else {
             btnStart.isEnabled = false
             btnStart.alpha = 0.5f
-            btnStart.text = "ATTENDI ($readyCount/$totalNeeded)"
+            btnStart.text = "WAITING ($readyCount/$totalNeeded)"
         }
     }
 
     private fun navigateToGroupRunScreen(runName: String) {
         val activity = activity as? MainActivity ?: return
         val fragment = GroupRunFragment.newInstance(
-            groupId!!, 
-            runName, 
-            memberIds ?: emptyList(), 
-            dynamicNamesMap.ifEmpty { userNamesMap ?: emptyMap() }
+            groupId!!,
+            runName,
+            memberIds ?: emptyList(),
+            dynamicNamesMap // Passiamo la mappa aggiornata
         )
         activity.navigateToFragment(fragment, "RUN_ACTIVE", runName)
     }
 
     private fun updateUI() {
         val list = mutableListOf<LobbyMemberState>()
-        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
         memberIds?.forEach { id ->
-            if (id != currentUserId) {
-                list.add(LobbyMemberState(id, presentMembers[id] ?: "waiting"))
+            // Se il nome manca nella mappa, proviamo a recuperarlo al volo dal nodo utenti
+            if (!dynamicNamesMap.containsKey(id)) {
+                fetchNameFromUsersNode(id)
             }
+            list.add(LobbyMemberState(id, presentMembers[id] ?: "waiting"))
         }
         adapter.updateList(list)
+    }
+
+    private fun fetchNameFromUsersNode(uid: String) {
+        // Supponendo che i tuoi utenti siano in /users/uid/username o /users/uid/name
+        database.child("users").child(uid).child("username").get().addOnSuccessListener {
+            val name = it.value?.toString()
+            if (name != null) {
+                dynamicNamesMap[uid] = name
+                adapter.updateNames(dynamicNamesMap)
+            }
+        }
     }
 
     override fun onDestroyView() {
@@ -216,12 +249,23 @@ class GroupLobbyFragment : Fragment() {
 
 data class LobbyMemberState(val userId: String, val status: String)
 
-class LobbyMembersAdapter(private var members: List<LobbyMemberState>, private var namesMap: Map<String, String>) : RecyclerView.Adapter<LobbyMembersAdapter.ViewHolder>() {
-    class ViewHolder(view: View) : RecyclerView.ViewHolder(view) { val tvName: TextView = view.findViewById(android.R.id.text1) }
-    
-    fun updateList(newList: List<LobbyMemberState>) { members = newList; notifyDataSetChanged() }
-    
+class LobbyMembersAdapter(
+    private var members: List<LobbyMemberState>,
+    private var namesMap: Map<String, String>
+) : RecyclerView.Adapter<LobbyMembersAdapter.ViewHolder>() {
+
+    class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        val tvName: TextView = view.findViewById(R.id.tvMemberName)
+        val tvStatus: TextView = view.findViewById(R.id.tvMemberStatus)
+    }
+
+    fun updateList(newList: List<LobbyMemberState>) {
+        members = newList
+        notifyDataSetChanged()
+    }
+
     fun updateNames(newNames: Map<String, String>) {
+        // Creiamo una nuova mappa che unisce i vecchi e i nuovi nomi
         val updatedMap = namesMap.toMutableMap()
         updatedMap.putAll(newNames)
         namesMap = updatedMap
@@ -229,13 +273,36 @@ class LobbyMembersAdapter(private var members: List<LobbyMemberState>, private v
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        return ViewHolder(LayoutInflater.from(parent.context).inflate(android.R.layout.simple_list_item_1, parent, false))
+        return ViewHolder(LayoutInflater.from(parent.context).inflate(R.layout.item_lobby_member, parent, false))
     }
+
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val item = members[position]
-        val statusText = when(item.status) { "ready" -> "PRONTO"; "rejected" -> "RIFIUTATO"; else -> "IN ATTESA..." }
-        val name = namesMap[item.userId] ?: item.userId
-        holder.tvName.text = "$name - $statusText"
+        val isMe = item.userId == FirebaseAuth.getInstance().currentUser?.uid
+
+        // Log di debug per verificare se l'ID è presente
+        Log.d("LobbyAdapter", "Checking name for: ${item.userId}. Found: ${namesMap[item.userId]}")
+
+        val name = when {
+            isMe -> "You"
+            namesMap.containsKey(item.userId) -> namesMap[item.userId]
+            else -> "Member (${item.userId.take(4)})" // Mostra parte dell'ID se il nome manca ancora
+        }
+
+        holder.tvName.text = name
+
+        val statusText = if (item.status == "ready") "READY" else "WAITING..."
+        holder.tvStatus.text = statusText
+
+        if (item.status == "ready") {
+            holder.tvStatus.setTextColor(Color.parseColor("#4CAF50"))
+            holder.tvStatus.setBackgroundResource(R.drawable.bg_dialog_rounded)
+            holder.tvStatus.backgroundTintList = android.content.res.ColorStateList.valueOf(Color.parseColor("#E8F5E9"))
+        } else {
+            holder.tvStatus.setTextColor(Color.parseColor("#666666"))
+            holder.tvStatus.setBackgroundResource(R.drawable.bg_dialog_rounded)
+            holder.tvStatus.backgroundTintList = android.content.res.ColorStateList.valueOf(Color.parseColor("#F5F5F5"))
+        }
     }
     override fun getItemCount() = members.size
 }

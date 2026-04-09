@@ -11,7 +11,7 @@ import com.google.android.material.button.MaterialButton
 
 class FriendRequestsAdapter(
     private val requests: List<FriendRequestResponse>,
-    private val onResponse: (String, String) -> Unit
+    private val onResponse: (String, String, String) -> Unit
 ) : RecyclerView.Adapter<FriendRequestsAdapter.RequestViewHolder>() {
 
     class RequestViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -27,10 +27,12 @@ class FriendRequestsAdapter(
 
     override fun onBindViewHolder(holder: RequestViewHolder, position: Int) {
         val request = requests[position]
-        holder.tvEmail.text = request.from_user_email
+        // Mostra il display_name se presente, altrimenti l'email
+        val senderInfo = request.fromUser.display_name ?: request.fromUser.email
+        holder.tvEmail.text = senderInfo
         
-        holder.btnAccept.setOnClickListener { onResponse(request.id, "accepted") }
-        holder.btnReject.setOnClickListener { onResponse(request.id, "rejected") }
+        holder.btnAccept.setOnClickListener { onResponse(request.id, "accepted", request.fromUser.id) }
+        holder.btnReject.setOnClickListener { onResponse(request.id, "rejected", request.fromUser.id) }
     }
 
     override fun getItemCount() = requests.size

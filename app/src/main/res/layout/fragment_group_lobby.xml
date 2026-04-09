@@ -12,14 +12,14 @@
         android:background="#FFFFFF"
         app:layout_constraintTop_toTopOf="parent"
         app:navigationIcon="?attr/homeAsUpIndicator"
-        app:title="Lobby Corsa di Gruppo" />
+        app:title="Group run lobby" />
 
     <TextView
         android:id="@+id/tvLobbyGroupName"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="24dp"
-        android:text="Nome Gruppo"
+        android:text="Group name"
         android:textSize="24sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
@@ -31,7 +31,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:text="In attesa dei partecipanti..."
+        android:text="Waiting for group members..."
         android:textColor="#666666"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -50,7 +50,7 @@
         android:layout_width="match_parent"
         android:layout_height="64dp"
         android:layout_margin="24dp"
-        android:text="INIZIA CORSA"
+        android:text="START RUN"
         android:textSize="16sp"
         android:textStyle="bold"
         app:cornerRadius="32dp"

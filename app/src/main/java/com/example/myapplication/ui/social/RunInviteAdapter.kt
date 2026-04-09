@@ -8,7 +8,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.myapplication.R
 import com.google.android.material.button.MaterialButton
 
-data class RunInvite(val groupId: String, val groupName: String)
+data class RunInvite(val groupId: String, val groupName: String, val members: List<String> = emptyList())
 
 class RunInviteAdapter(
     private var invities: List<RunInvite>,
@@ -33,7 +33,7 @@ class RunInviteAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val invite = invities[position]
-        holder.tvMessage.text = "Il gruppo '${invite.groupName}' sta iniziando una corsa!"
+        holder.tvMessage.text = "Group '${invite.groupName}' is starting a run!"
         
         holder.btnAccept.setOnClickListener { onAction(invite, "accepted") }
         holder.btnReject.setOnClickListener { onAction(invite, "rejected") }

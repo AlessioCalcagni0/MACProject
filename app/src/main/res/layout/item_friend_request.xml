@@ -32,9 +32,9 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Ti ha inviato una richiesta"
-                android:textSize="12sp"
-                android:textColor="#777777" />
+                android:text="Sent you a request"
+                android:textColor="#777777"
+                android:textSize="12sp" />
         </LinearLayout>
 
         <com.google.android.material.button.MaterialButton
@@ -42,7 +42,7 @@
             style="@style/Widget.MaterialComponents.Button.TextButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Accetta"
+            android:text="Accept"
             android:textColor="#4CAF50" />
 
         <com.google.android.material.button.MaterialButton
@@ -50,7 +50,7 @@
             style="@style/Widget.MaterialComponents.Button.TextButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Rifiuta"
+            android:text="Deny"
             android:textColor="#F44336" />
 
     </LinearLayout>

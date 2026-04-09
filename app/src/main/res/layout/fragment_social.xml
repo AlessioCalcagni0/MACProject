@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F5F5F5">
+    android:background="#000000">
 
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
@@ -23,10 +23,10 @@
                 android:id="@+id/tvRequestsHeader"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Richieste di Amicizia"
+                android:text="Friend Requests"
                 android:textSize="18sp"
                 android:textStyle="bold"
-                android:textColor="#6200EE"
+                android:textColor="#00BFFF"
                 android:layout_marginBottom="12dp"
                 android:visibility="gone" />
 
@@ -43,10 +43,10 @@
                 android:id="@+id/tvGroupInvitesHeader"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Inviti di Gruppo"
+                android:text="Group Invites"
                 android:textSize="18sp"
                 android:textStyle="bold"
-                android:textColor="#6200EE"
+                android:textColor="#00BFFF"
                 android:layout_marginBottom="12dp"
                 android:visibility="gone" />
 
@@ -63,7 +63,7 @@
                 android:id="@+id/tvActiveRunInvitesHeader"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Corse di Gruppo in partenza"
+                android:text="Group runs starting"
                 android:textSize="18sp"
                 android:textStyle="bold"
                 android:textColor="#FF9800"
@@ -87,10 +87,10 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="I tuoi Gruppi"
+                    android:text="Your groups"
+                    android:textColor="#FFFFFF"
                     android:textSize="20sp"
-                    android:textStyle="bold"
-                    android:textColor="#333333" />
+                    android:textStyle="bold" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnCreateGroup"
@@ -98,11 +98,10 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_alignParentEnd="true"
-                    android:text="+ Crea"
-                    android:textColor="#6200EE" />
+                    android:text="+ Create"
+                    android:textColor="#00BFFF" />
             </RelativeLayout>
 
-            <!-- Rimossa la CardView che avvolgeva il RecyclerView per evitare conflitti di click -->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvGroups"
                 android:layout_width="match_parent"
@@ -120,10 +119,10 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Amici"
+                    android:text="Friends"
+                    android:textColor="#FFFFFF"
                     android:textSize="20sp"
-                    android:textStyle="bold"
-                    android:textColor="#333333" />
+                    android:textStyle="bold" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnAddFriend"
@@ -131,8 +130,8 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_alignParentEnd="true"
-                    android:text="Aggiungi"
-                    android:textColor="#6200EE" />
+                    android:text="+ Add"
+                    android:textColor="#00BFFF" />
             </RelativeLayout>
 
             <androidx.recyclerview.widget.RecyclerView
@@ -154,6 +153,7 @@
         android:text="START A GROUP RUN"
         android:textSize="16sp"
         android:textStyle="bold"
+        app:backgroundTint="#00BFFF"
         app:cornerRadius="32dp"
         app:layout_constraintBottom_toBottomOf="parent" />
 

@@ -2,6 +2,7 @@ package com.example.myapplication.ui.auth
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.util.Patterns
 import android.widget.Button
 import android.widget.EditText
@@ -10,9 +11,11 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.myapplication.R
+import com.example.myapplication.data.RetrofitClient
 import com.example.myapplication.data.auth.AuthRepositoryImpl
 import com.example.myapplication.domain.auth.LoginUseCase
 import com.example.myapplication.ui.home.MainActivity
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 
 class LoginActivity : AppCompatActivity() {
@@ -55,17 +58,17 @@ class LoginActivity : AppCompatActivity() {
 
         when {
             email.isEmpty() -> {
-                etEmailLogin.error = "Inserisci l'email"
+                etEmailLogin.error = "Please enter your email"
                 etEmailLogin.requestFocus()
             }
 
             !Patterns.EMAIL_ADDRESS.matcher(email).matches() -> {
-                etEmailLogin.error = "Email non valida"
+                etEmailLogin.error = "Invalid email"
                 etEmailLogin.requestFocus()
             }
 
             password.isEmpty() -> {
-                etPasswordLogin.error = "Inserisci la password"
+                etPasswordLogin.error = "Please enter your password"
                 etPasswordLogin.requestFocus()
             }
 
@@ -74,14 +77,30 @@ class LoginActivity : AppCompatActivity() {
                     val success = loginUseCase(email, password)
 
                     if (success) {
-                        Toast.makeText(this@LoginActivity, "Login effettuato", Toast.LENGTH_SHORT).show()
+                        // After successful login, force a sync to retrieve data from DB
+                        syncUserDataOnLogin()
+                        
+                        Toast.makeText(this@LoginActivity, "Login successful", Toast.LENGTH_SHORT).show()
                         startActivity(Intent(this@LoginActivity, MainActivity::class.java))
                         finish()
                     } else {
-                        Toast.makeText(this@LoginActivity, "Errore nel login", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@LoginActivity, "Login error", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
+        }
+    }
+    
+    private suspend fun syncUserDataOnLogin() {
+        val user = FirebaseAuth.getInstance().currentUser ?: return
+        try {
+            val tokenResult = com.google.android.gms.tasks.Tasks.await(user.getIdToken(true))
+            val token = "Bearer ${tokenResult.token}"
+            // Call syncUser with empty map to force backend to return data (including weight)
+            RetrofitClient.api.syncUser(token, emptyMap<String, Any>())
+            Log.d("LoginActivity", "User data synced successfully on login")
+        } catch (e: Exception) {
+            Log.e("LoginActivity", "Failed to sync user data on login", e)
         }
     }
 }

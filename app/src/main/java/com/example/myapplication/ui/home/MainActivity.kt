@@ -1,10 +1,11 @@
 package com.example.myapplication.ui.home
 
 import android.os.Bundle
-import android.util.Log
+import android.view.View
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentManager
 import com.bumptech.glide.Glide
 import com.example.myapplication.R
 import com.example.myapplication.data.RetrofitClient
@@ -48,22 +49,20 @@ class MainActivity : AppCompatActivity() {
         updateToolbarProfileImage()
 
         if (savedInstanceState == null) {
-            val home = HomeFragment()
-            supportFragmentManager.beginTransaction().add(R.id.nav_host_fragment, home, TAG_HOME).commit()
-            activeFragment = home
-            tvToolbarTitle.text = "Home"
+            // Inizializzazione sulla Home
+            switchFragment(TAG_HOME, "Home") { HomeFragment() }
         }
 
         ivToolbarProfile.setOnClickListener {
-            switchFragment(TAG_PROFILE, "Profilo") { ProfileFragment() }
+            switchFragmentByTag(TAG_PROFILE)
         }
 
         bottomNavigation.setOnItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.nav_home -> { switchFragment(TAG_HOME, "Home") { HomeFragment() }; true }
-                R.id.nav_run -> { switchFragment(TAG_RUN, "Corsa Singola") { RunFragment() }; true }
+                R.id.nav_run -> { switchFragment(TAG_RUN, "Single Run") { RunFragment() }; true }
                 R.id.nav_social -> { switchFragment(TAG_SOCIAL, "Social") { SocialFragment() }; true }
-                R.id.nav_stats -> { switchFragment(TAG_STATS, "Statistiche") { StatsFragment() }; true }
+                R.id.nav_stats -> { switchFragment(TAG_STATS, "Stats") { StatsFragment() }; true }
                 else -> false
             }
         }
@@ -71,29 +70,57 @@ class MainActivity : AppCompatActivity() {
 
     fun navigateToFragment(fragment: Fragment, tag: String, title: String) {
         val transaction = supportFragmentManager.beginTransaction()
-        activeFragment?.let { transaction.hide(it) }
+        // Nascondiamo il frammento attivo (es. SocialFragment)
+        activeFragment?.let { if (it.isAdded) transaction.hide(it) }
         transaction.add(R.id.nav_host_fragment, fragment, tag)
         transaction.addToBackStack(tag)
         activeFragment = fragment
         tvToolbarTitle.text = title
+        ivToolbarProfile.visibility = View.GONE
         transaction.commit()
+    }
+
+    fun switchFragmentByTag(tag: String) {
+        val menuId = when(tag) {
+            TAG_HOME -> R.id.nav_home
+            TAG_RUN -> R.id.nav_run
+            TAG_SOCIAL -> R.id.nav_social
+            TAG_STATS -> R.id.nav_stats
+            else -> -1
+        }
+        
+        if (menuId != -1) {
+            // Impostando selectedItemId, viene triggerato il listener della BottomNav
+            // che a sua volta chiama switchFragment(...) con la pulizia corretta.
+            bottomNavigation.selectedItemId = menuId
+        } else if (tag == TAG_PROFILE) {
+            switchFragment(TAG_PROFILE, "Profile") { ProfileFragment() }
+        }
     }
 
     private fun switchFragment(tag: String, title: String, creator: () -> Fragment) {
         val fm = supportFragmentManager
+        
+        // 1. Pulizia immediata del backstack (rimuove Lobby, Run, Summary e ripristina stati precedenti)
+        fm.popBackStackImmediate(null, FragmentManager.POP_BACK_STACK_INCLUSIVE)
+        
         val transaction = fm.beginTransaction()
 
-        // PULIZIA: Se stiamo cambiando sezione, rimuoviamo Lobby, Run attiva o Summary
-        val specialFragments = fm.fragments.filter { 
-            it is GroupLobbyFragment || it is GroupRunFragment || it is GroupRunSummaryFragment 
+        // 2. Rimuoviamo manualmente i frammenti "speciali" se ancora presenti
+        fm.fragments.forEach { 
+            if (it is GroupLobbyFragment || it is GroupRunFragment || it is GroupRunSummaryFragment) {
+                transaction.remove(it)
+            }
         }
-        specialFragments.forEach { transaction.remove(it) }
 
+        // 3. Nascondiamo TUTTI i frammenti principali per evitare sovrapposizioni (es. Social che riappare)
+        val mainTags = listOf(TAG_HOME, TAG_RUN, TAG_SOCIAL, TAG_STATS, TAG_PROFILE)
+        mainTags.forEach { t ->
+            fm.findFragmentByTag(t)?.let { transaction.hide(it) }
+        }
+
+        // 4. Mostriamo il frammento richiesto o lo creiamo se non esiste
         val existing = fm.findFragmentByTag(tag)
-        
-        // Nascondiamo il fragment attivo se non è tra quelli che abbiamo appena rimosso
-        activeFragment?.let { if (it.isAdded) transaction.hide(it) }
-
         if (existing != null) {
             transaction.show(existing)
             activeFragment = existing
@@ -105,6 +132,10 @@ class MainActivity : AppCompatActivity() {
         
         transaction.commit()
         tvToolbarTitle.text = title
+        
+        // Gestione visibilità icona profilo
+        val isMainSection = tag in listOf(TAG_HOME, TAG_RUN, TAG_SOCIAL, TAG_STATS)
+        ivToolbarProfile.visibility = if (isMainSection) View.VISIBLE else View.GONE
         updateToolbarProfileImage()
     }
 
@@ -127,13 +158,6 @@ class MainActivity : AppCompatActivity() {
                 val token = Tasks.await(user.getIdToken(false)).token
                 if (token != null) RetrofitClient.api.syncUser("Bearer $token", userData)
             } catch (e: Exception) {}
-        }
-    }
-
-    private fun updateTitleByTag(tag: String) {
-        tvToolbarTitle.text = when(tag) {
-            TAG_HOME -> "Home"; TAG_RUN -> "Corsa Singola"; TAG_SOCIAL -> "Social"
-            TAG_STATS -> "Statistiche"; TAG_PROFILE -> "Profilo"; else -> "Pacemate"
         }
     }
 }

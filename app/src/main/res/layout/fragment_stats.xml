@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F5F5F5">
+    android:background="#000000">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -14,24 +14,24 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Le tue Statistiche"
-            android:textColor="#333333"
+            android:text="Your statistics"
+            android:textColor="#FFFFFF"
             android:textSize="24sp"
             android:textStyle="bold" />
 
-        <!-- Card Totali -->
+        <!-- Card Totali (Celeste come richiesto) -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
-            app:cardCornerRadius="16dp"
+            app:cardCornerRadius="24dp"
             app:cardElevation="4dp"
             app:strokeWidth="0dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="#6200EE"
+                android:background="#00BFFF"
                 android:orientation="vertical"
                 android:padding="20dp">
 
@@ -47,15 +47,15 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Distanza Totale Percorsa"
-                    android:textColor="#B3FFFFFF"
+                    android:text="Total distance "
+                    android:textColor="#E0FFFFFF"
                     android:textSize="14sp" />
 
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
                     android:layout_marginVertical="16dp"
-                    android:background="#33FFFFFF" />
+                    android:background="#80FFFFFF" />
 
                 <GridLayout
                     android:layout_width="match_parent"
@@ -80,8 +80,8 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Corse Totali"
-                            android:textColor="#B3FFFFFF"
+                            android:text="Total runs"
+                            android:textColor="#E0FFFFFF"
                             android:textSize="12sp" />
                     </LinearLayout>
 
@@ -103,8 +103,8 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Calorie Bruciate"
-                            android:textColor="#B3FFFFFF"
+                            android:text="Calories burnt "
+                            android:textColor="#E0FFFFFF"
                             android:textSize="12sp" />
                     </LinearLayout>
                 </GridLayout>
@@ -117,23 +117,23 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="32dp"
-            android:text="Andamento Velocità"
-            android:textColor="#333333"
+            android:textColor="#FFFFFF"
             android:textSize="18sp"
             android:textStyle="bold" />
 
+        <!-- Card Grafico (Bianca come richiesto) -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="280dp"
             android:layout_marginTop="12dp"
-            app:cardCornerRadius="16dp"
-            app:cardElevation="2dp"
-            app:strokeColor="#EEEEEE"
-            app:strokeWidth="1dp">
+            app:cardCornerRadius="24dp"
+            app:cardElevation="4dp"
+            app:strokeWidth="0dp">
 
             <HorizontalScrollView
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
+                android:background="#FFFFFF"
                 android:scrollbars="none">
 
                 <com.example.myapplication.ui.stats.StatsChartView
@@ -145,40 +145,43 @@
             </HorizontalScrollView>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Bottoni Switch Grafico -->
+        <!-- Bottoni (Blu e Bianchi come richiesto) -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="24dp"
             android:gravity="center"
             android:orientation="horizontal">
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnShowSpeed"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="8dp"
-                android:text="Velocità"
+                android:text="Speed"
+                android:textColor="#FFFFFF"
+                app:backgroundTint="#00BFFF"
                 android:textSize="12sp"
                 app:cornerRadius="20dp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnShowDistance"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="8dp"
-                android:text="Distanza"
+                android:text="Distance"
+                android:textColor="#00BFFF"
+                app:backgroundTint="#FFFFFF"
                 android:textSize="12sp"
                 app:cornerRadius="20dp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnShowCalories"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Calorie"
+                android:text="Calories"
+                android:textColor="#00BFFF"
+                app:backgroundTint="#FFFFFF"
                 android:textSize="12sp"
                 app:cornerRadius="20dp" />
         </LinearLayout>

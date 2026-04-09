@@ -83,13 +83,16 @@ interface ApiService {
     // --- GESTIONE AMICI ---
 
     @POST("users/sync")
-    suspend fun syncUser(@Header("Authorization") token: String, @Body userData: Map<String, String>)
+    suspend fun syncUser(@Header("Authorization") token: String, @Body userData: Map<String, @JvmSuppressWildcards Any>): UserResponse
 
     @GET("users/search")
     suspend fun searchUsers(@Query("query") query: String): List<UserResponse>
 
     @POST("friends/request")
-    suspend fun sendFriendRequest(@Query("from_user_id") fromUserId: String, @Query("to_user_email") toUserEmail: String): FriendRequestResponse
+    suspend fun sendFriendRequest(
+        @Query("from_user_id") fromUserId: String,
+        @Query("to_user_email") toUserEmail: String
+    ): FriendRequestActionResponse
 
     @GET("friends/pending")
     suspend fun getPendingRequests(@Query("user_id") userId: String): List<FriendRequestResponse>
@@ -120,7 +123,8 @@ data class GroupDetailedResponse(
     @SerializedName("group_id") val groupId: String?,
     val name: String,
     @SerializedName("creator_id") val creatorId: String? = null,
-    @SerializedName("members_ids") val membersIds: List<String>?
+    @SerializedName("members_ids") val membersIds: List<String>?,
+    @SerializedName("members_names") val membersNames: Map<String, String>? = null
 ) {
     val realId: String get() = id ?: groupId ?: ""
 }
@@ -139,7 +143,18 @@ data class GroupInviteActionResponse(
 data class UserResponse(
     @SerializedName("firebase_uid") val id: String,
     val email: String,
-    val display_name: String?
+    val display_name: String?,
+    val weight: Float? = null
 )
 
-data class FriendRequestResponse(val id: String, val from_user_email: String, val status: String)
+data class FriendRequestResponse(
+    val id: String,
+    @SerializedName("from_user") val fromUser: UserResponse,
+    val status: String
+)
+
+data class FriendRequestActionResponse(
+    val status: String,
+    @SerializedName("request_id") val requestId: String,
+    @SerializedName("to_user_id") val toUserId: String? = null
+)

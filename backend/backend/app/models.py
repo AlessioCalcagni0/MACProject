@@ -13,9 +13,11 @@ class User(Base):
     surname = Column(String, nullable=True)
     email = Column(String)
     firebase_uid = Column(String, unique=True)
+    derived_uuid = Column(UUID(as_uuid=True), unique=True, nullable=True)
     display_name = Column(String)
     provider = Column(String, default="firebase")
     friend_ids = Column(JSON, default=list)
+    weight = Column(Float, default=70.0)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
@@ -72,7 +74,7 @@ class Group(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String)
-    creator_id = Column(UUID)
+    creator_id = Column(String)
     members_ids = Column(JSON, default=list)
     created_at = Column(DateTime, default=datetime.utcnow)
 

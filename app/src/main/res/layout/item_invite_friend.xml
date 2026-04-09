@@ -11,9 +11,9 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:text="Nome Amico"
-        android:textSize="16sp"
-        android:textColor="#333333" />
+        android:text="Friend name"
+        android:textColor="#333333"
+        android:textSize="16sp" />
 
     <CheckBox
         android:id="@+id/cbInvite"

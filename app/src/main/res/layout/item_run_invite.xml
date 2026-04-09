@@ -19,7 +19,7 @@
             android:id="@+id/tvRunInviteMessage"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Il gruppo 'Amici' sta iniziando una corsa!"
+            android:text="The group 'Group' is starting a run!"
             android:textColor="#333333"
             android:textSize="16sp"
             android:textStyle="bold" />
@@ -35,10 +35,10 @@
                 style="@style/Widget.MaterialComponents.Button"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
                 android:layout_marginEnd="8dp"
-                android:text="ENTRA"
-                android:backgroundTint="#4CAF50" />
+                android:layout_weight="1"
+                android:backgroundTint="#4CAF50"
+                android:text="Join" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnRejectRun"
@@ -46,7 +46,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="RIFIUTA"
+                android:text="Deny"
                 android:textColor="#F44336"
                 app:strokeColor="#F44336" />
 

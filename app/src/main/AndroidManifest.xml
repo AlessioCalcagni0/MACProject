@@ -6,6 +6,9 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Permesso per il riconoscimento dell'attività fisica (necessario per il sensore passi) -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+
     <!-- Permessi per la fotocamera e galleria -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
@@ -22,7 +25,7 @@
         android:usesCleartextTraffic="true"
         android:theme="@style/Theme.MyApplication">
 
-        <!-- Google Maps API Key -->
+        <!-- Google Maps API Key corretta -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyB8f9vJfQm9EcQCSrr6eTSMfvudQY4i3Z4" />

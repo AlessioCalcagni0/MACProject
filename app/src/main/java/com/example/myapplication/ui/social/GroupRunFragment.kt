@@ -157,6 +157,7 @@ class GroupRunFragment : Fragment(), OnMapReadyCallback {
         fabPhoto.setOnClickListener { openCamera() }
 
         syncStartTime()
+        listenToLobbyNames()
         startLocationUpdates()
         listenToStatsOptimized()
         listenToPhotosOptimized()
@@ -164,20 +165,29 @@ class GroupRunFragment : Fragment(), OnMapReadyCallback {
         handler.post(timerRunnable)
     }
 
+    private fun listenToLobbyNames() {
+        lobbyRef.child("names").addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                for (child in snapshot.children) {
+                    val uId = child.key ?: continue
+                    val name = child.value?.toString() ?: continue
+                    if (!name.isNullOrBlank()) {
+                        userNamesMap[uId] = name
+                    }
+                }
+                activity?.runOnUiThread {
+                    statsAdapter.updateNames(userNamesMap)
+                }
+            }
+            override fun onCancelled(error: DatabaseError) {}
+        })
+    }
+
     private fun listenToStatsOptimized() {
         statsChildListener = object : ChildEventListener {
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) { updateParticipant(snapshot) }
             override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) { updateParticipant(snapshot) }
-            override fun onChildRemoved(snapshot: DataSnapshot) {
-                val uId = snapshot.key ?: return
-                participantMarkers[uId]?.remove()
-                participantMarkers.remove(uId)
-                participantPolylines[uId]?.remove()
-                participantPolylines.remove(uId)
-                participantPaths.remove(uId)
-                participantStatsMap.remove(uId)
-                statsAdapter.updateData(participantStatsMap.values.toList())
-            }
+            override fun onChildRemoved(snapshot: DataSnapshot) {}
             override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
             override fun onCancelled(error: DatabaseError) {}
         }
@@ -192,11 +202,17 @@ class GroupRunFragment : Fragment(), OnMapReadyCallback {
         val dist = snapshot.child("distance").getValue(Double::class.java) ?: 0.0
         val bearing = snapshot.child("bearing").getValue(Float::class.java) ?: 0f
         
+        val liveName = snapshot.child("name").getValue(String::class.java)
+        if (!liveName.isNullOrBlank()) {
+            userNamesMap[uId] = liveName
+        }
+
         val pos = LatLng(lat, lng)
         drawParticipantOnMap(uId, pos, bearing)
-        participantStatsMap[uId] = ParticipantLiveStats(uId, speed, 0, dist)
+        participantStatsMap[uId] = ParticipantLiveStats(uId, speed, (dist * 70 * 0.9).toInt(), dist)
         
         activity?.runOnUiThread {
+            statsAdapter.updateNames(userNamesMap)
             statsAdapter.updateData(participantStatsMap.values.toList())
         }
     }
@@ -206,7 +222,7 @@ class GroupRunFragment : Fragment(), OnMapReadyCallback {
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
                 val url = snapshot.getValue(String::class.java) ?: return
                 if (!latestPhotos.contains(url)) {
-                    latestPhotos.add(0, url) // Aggiungi in cima per visibilità immediata
+                    latestPhotos.add(0, url) 
                     photosAdapter.updatePhotos(latestPhotos)
                 }
             }
@@ -228,11 +244,15 @@ class GroupRunFragment : Fragment(), OnMapReadyCallback {
     private fun listenToRunStatus() {
         statusListener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.value == "finished" && !isFinishing) finishRunAndShowSummary()
+                val status = snapshot.child("status").value?.toString()
+                if (status == "finished" && !isFinishing) {
+                    val historyId = snapshot.child("historyId").value?.toString()
+                    finishRunAndShowSummary(historyId)
+                }
             }
             override fun onCancelled(error: DatabaseError) {}
         }
-        lobbyRef.child("status").addValueEventListener(statusListener)
+        lobbyRef.addValueEventListener(statusListener)
     }
 
     private fun terminateNow() {
@@ -240,28 +260,25 @@ class GroupRunFragment : Fragment(), OnMapReadyCallback {
         isFinishing = true
         isRunning = false
         btnStop.isEnabled = false
-        Toast.makeText(context, "Chiusura corsa...", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, "Closing run...", Toast.LENGTH_SHORT).show()
 
         val boundsBuilder = LatLngBounds.Builder()
-        var hasPoints = false
+        var pointsFound = false
         participantPaths.values.forEach { path ->
             path.forEach { point ->
                 boundsBuilder.include(point)
-                hasPoints = true
+                pointsFound = true
             }
         }
 
-        if (googleMap != null && hasPoints) {
+        if (googleMap != null && pointsFound) {
             try {
-                val bounds = boundsBuilder.build()
-                googleMap?.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 100))
+                googleMap?.animateCamera(CameraUpdateFactory.newLatLngBounds(boundsBuilder.build(), 100))
                 
                 handler.postDelayed({
                     googleMap?.snapshot { bitmap ->
                         if (bitmap != null) {
-                            uploadMapSnapshot(bitmap) {
-                                finalizeTermination()
-                            }
+                            uploadMapSnapshot(bitmap) { finalizeTermination() }
                         } else {
                             finalizeTermination()
                         }
@@ -276,42 +293,79 @@ class GroupRunFragment : Fragment(), OnMapReadyCallback {
     }
 
     private fun finalizeTermination() {
-        lobbyRef.child("status").setValue("finished").addOnCompleteListener {
-            saveGroupRunToHistory(participantStatsMap.values.toList(), latestPhotos)
-            finishRunAndShowSummary()
+        val historyId = saveGroupRunToHistory(participantStatsMap.values.toList(), latestPhotos)
+        val update = mapOf("status" to "finished", "historyId" to historyId)
+        lobbyRef.updateChildren(update).addOnCompleteListener {
+            finishRunAndShowSummary(historyId)
         }
     }
 
-    private fun saveGroupRunToHistory(stats: List<ParticipantLiveStats>, photos: List<String>) {
+    private fun uploadMapSnapshot(bitmap: Bitmap, onComplete: () -> Unit) {
+        val storageRef = FirebaseStorage.getInstance().reference.child("group_runs/${groupId}/map_summary.jpg")
+        val baos = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 70, baos)
+        storageRef.putBytes(baos.toByteArray()).addOnSuccessListener {
+            it.metadata?.reference?.downloadUrl?.addOnSuccessListener { uri ->
+                val url = uri.toString()
+                photosRef.push().setValue(url).addOnCompleteListener { onComplete() }
+            }
+        }.addOnFailureListener { onComplete() }
+    }
+
+    private fun saveGroupRunToHistory(stats: List<ParticipantLiveStats>, photos: List<String>): String {
         val historyRef = database.child("group_run_history").push()
-        val historyId = historyRef.key ?: return
-        val serializableStats = stats.map { s ->
-            mapOf("userId" to s.userId, "speed" to s.speed, "calories" to s.calories, "distance" to s.distance)
+        val historyId = historyRef.key ?: return ""
+        
+        val participantNames = mutableMapOf<String, String>()
+        // Includiamo i nomi di chiunque abbia partecipato (chi è in stats)
+        stats.forEach { s ->
+            val name = userNamesMap[s.userId] ?: "Participant"
+            participantNames[s.userId] = name
         }
+        
+        // Includiamo anche gli altri membri del gruppo per completezza
+        memberIds.forEach { mId ->
+            if (!participantNames.containsKey(mId)) {
+                userNamesMap[mId]?.let { participantNames[mId] = it }
+            }
+        }
+
         val historyData = mapOf(
-            "id" to historyId, "groupId" to groupId, "groupName" to runName,
-            "timestamp" to System.currentTimeMillis(), "durationSeconds" to seconds,
-            "stats" to serializableStats, "photos" to photos, "participants" to memberIds
+            "id" to historyId, 
+            "groupName" to runName,
+            "timestamp" to System.currentTimeMillis(), 
+            "durationSeconds" to seconds,
+            "stats" to stats.map { mapOf("userId" to it.userId, "speed" to it.speed, "calories" to it.calories, "distance" to it.distance) }, 
+            "photos" to photos, 
+            "participantNames" to participantNames,
+            "type" to "group"
         )
-        memberIds.forEach { database.child("users").child(it).child("recent_activities").child(historyId).setValue(historyData) }
-        database.child("completed_group_runs").child(historyId).setValue(historyData)
+        
+        // Salviamo l'attività per TUTTI i membri che hanno partecipato o sono nel gruppo
+        val allInvolved = (memberIds + participantNames.keys).distinct()
+        allInvolved.forEach { database.child("users").child(it).child("recent_activities").child(historyId).setValue(historyData) }
+        
+        return historyId
     }
 
-    private fun finishRunAndShowSummary() {
+    private fun finishRunAndShowSummary(historyId: String? = null) {
         isFinishing = true
         isRunning = false
         handler.removeCallbacks(timerRunnable)
         fusedLocationClient.removeLocationUpdates(locationCallback)
         
-        statsChildListener?.let { statsRef.removeEventListener(it) }
-        photosChildListener?.let { photosRef.removeEventListener(it) }
-        lobbyRef.child("status").removeEventListener(statusListener)
+        lobbyRef.removeEventListener(statusListener)
+        if (isOrganizer) handler.postDelayed({ lobbyRef.removeValue() }, 15000)
 
-        if (isOrganizer) handler.postDelayed({ lobbyRef.removeValue() }, 10000)
-
-        val summaryFragment = GroupRunSummaryFragment.newInstance(participantStatsMap.values.toList(), latestPhotos, userNamesMap, seconds, true, groupId)
-        val mainActivity = activity as? MainActivity ?: return
-        mainActivity.navigateToFragment(summaryFragment, "SUMMARY", "Riassunto Corsa")
+        val summaryFragment = GroupRunSummaryFragment.newInstance(
+            participantStatsMap.values.toList(), 
+            latestPhotos, 
+            userNamesMap, 
+            seconds, 
+            true, 
+            runId = historyId
+        )
+        (activity as? MainActivity)?.navigateToFragment(summaryFragment, "SUMMARY", "Run Summary")
     }
 
     private fun checkOrganizerStatus() {
@@ -324,14 +378,30 @@ class GroupRunFragment : Fragment(), OnMapReadyCallback {
 
     private fun startLocationUpdates() {
         val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 2000).build()
+        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+        // Cerchiamo il nome dell'utente corrente
+        val myName = userNamesMap[userId] ?: FirebaseAuth.getInstance().currentUser?.displayName ?: "Runner"
+        
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
                 result.lastLocation?.let { location ->
                     lastLocation?.let { totalDistance += it.distanceTo(location) }
                     lastLocation = location
-                    val myStats = mapOf("lat" to location.latitude, "lng" to location.longitude, "speed" to (location.speed * 3.6), "distance" to (totalDistance / 1000.0), "bearing" to location.bearing.toDouble())
+                    val pos = LatLng(location.latitude, location.longitude)
+                    val myStats = mapOf(
+                        "lat" to location.latitude, 
+                        "lng" to location.longitude, 
+                        "speed" to (location.speed * 3.6), 
+                        "distance" to (totalDistance / 1000.0), 
+                        "name" to myName,
+                        "bearing" to location.bearing.toDouble()
+                    )
                     statsRef.child(FirebaseAuth.getInstance().currentUser!!.uid).setValue(myStats)
-                    if (followMe) googleMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(location.latitude, location.longitude), 17f))
+                    
+                    // Se followMe è attivo, centriamo la mappa sulla posizione corrente
+                    if (followMe) {
+                        googleMap?.animateCamera(CameraUpdateFactory.newLatLng(pos))
+                    }
                 }
             }
         }
@@ -343,20 +413,43 @@ class GroupRunFragment : Fragment(), OnMapReadyCallback {
     private fun drawParticipantOnMap(userId: String, position: LatLng, bearing: Float) {
         activity?.runOnUiThread {
             if (googleMap == null) return@runOnUiThread
-            val isMe = userId == FirebaseAuth.getInstance().currentUser?.uid
+            val currentUid = FirebaseAuth.getInstance().currentUser?.uid
+            val isMe = userId == currentUid
+            val color = if (isMe) Color.BLUE else Color.RED
+
             if (participantMarkers.containsKey(userId)) {
                 participantMarkers[userId]?.position = position
                 participantMarkers[userId]?.rotation = bearing
+                participantMarkers[userId]?.title = userNamesMap[userId] ?: "Runner"
             } else {
-                val arrowBitmap = getArrowBitmap(if (isMe) Color.BLUE else Color.RED)
-                val marker = googleMap?.addMarker(MarkerOptions().position(position).title(userNamesMap[userId] ?: "Runner").icon(BitmapDescriptorFactory.fromBitmap(arrowBitmap)).flat(true).anchor(0.5f, 0.5f))
-                if (marker != null) participantMarkers[userId] = marker
+                val arrowBitmap = getArrowBitmap(color)
+                val marker = googleMap?.addMarker(MarkerOptions()
+                    .position(position)
+                    .title(userNamesMap[userId] ?: "Runner")
+                    .icon(BitmapDescriptorFactory.fromBitmap(arrowBitmap))
+                    .flat(true)
+                    .anchor(0.5f, 0.5f))
+                if (marker != null) {
+                    participantMarkers[userId] = marker
+                    
+                    // AUTOZOOM: Se il marker creato è il mio, facciamo lo zoom iniziale
+                    if (isMe) {
+                        googleMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(position, 17f))
+                    }
+                }
             }
+
             val path = participantPaths.getOrPut(userId) { mutableListOf() }
             if (path.isEmpty() || path.last() != position) {
                 path.add(position)
-                if (participantPolylines.containsKey(userId)) participantPolylines[userId]?.points = path
-                else participantPolylines[userId] = googleMap!!.addPolyline(PolylineOptions().addAll(path).color(if (isMe) Color.BLUE else Color.RED).width(10f))
+                if (participantPolylines.containsKey(userId)) {
+                    participantPolylines[userId]?.points = path
+                } else {
+                    participantPolylines[userId] = googleMap!!.addPolyline(PolylineOptions()
+                        .addAll(path)
+                        .color(color)
+                        .width(10f))
+                }
             }
         }
     }
@@ -371,29 +464,17 @@ class GroupRunFragment : Fragment(), OnMapReadyCallback {
         return bitmap
     }
 
-    private fun uploadMapSnapshot(bitmap: Bitmap, onComplete: () -> Unit) {
-        val storageRef = FirebaseStorage.getInstance().reference.child("group_runs/${groupId}/map_${System.currentTimeMillis()}.jpg")
-        val baos = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 70, baos)
-        storageRef.putBytes(baos.toByteArray()).addOnSuccessListener {
-            storageRef.downloadUrl.addOnSuccessListener { uri -> 
-                val url = uri.toString()
-                photosRef.push().setValue(url).addOnCompleteListener { 
-                    if (!latestPhotos.contains(url)) {
-                        latestPhotos.add(0, url)
-                    }
-                    onComplete() 
-                } 
-            }.addOnFailureListener { onComplete() }
-        }.addOnFailureListener { onComplete() }
-    }
-
     private fun openCamera() { takePhotoLauncher.launch(Intent(MediaStore.ACTION_IMAGE_CAPTURE)) }
+    
     private fun uploadPhotoToFirebase(bitmap: Bitmap) {
         val storageRef = FirebaseStorage.getInstance().reference.child("group_runs/${groupId}/${System.currentTimeMillis()}.jpg")
         val baos = ByteArrayOutputStream()
         bitmap.compress(Bitmap.CompressFormat.JPEG, 70, baos)
-        storageRef.putBytes(baos.toByteArray()).addOnSuccessListener { storageRef.downloadUrl.addOnSuccessListener { uri -> photosRef.push().setValue(uri.toString()) } }
+        storageRef.putBytes(baos.toByteArray()).addOnSuccessListener { 
+            it.metadata?.reference?.downloadUrl?.addOnSuccessListener { uri -> 
+                photosRef.push().setValue(uri.toString()) 
+            } 
+        }
     }
 
     private fun updateTimerUI() {
@@ -413,5 +494,4 @@ class GroupRunFragment : Fragment(), OnMapReadyCallback {
         statsChildListener?.let { statsRef.removeEventListener(it) }
         photosChildListener?.let { photosRef.removeEventListener(it) }
     }
-    override fun onLowMemory() { super.onLowMemory(); mapView.onLowMemory() }
 }

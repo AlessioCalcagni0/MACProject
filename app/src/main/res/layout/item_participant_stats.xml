@@ -31,7 +31,7 @@
                 android:id="@+id/tvParticipantName"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Nome Utente"
+                android:text="Username"
                 android:textSize="22sp"
                 android:textStyle="bold"
                 android:textColor="#333333" />
@@ -47,36 +47,36 @@
             android:id="@+id/tvParticipantDistance"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Distanza percorsa: 0.00 km"
-            android:textSize="18sp"
-            android:textColor="#212121"
             android:layout_marginBottom="8dp"
             android:drawableStart="@android:drawable/ic_menu_directions"
-            android:drawablePadding="12dp"/>
+            android:drawablePadding="12dp"
+            android:text="Distance: 0.00 km"
+            android:textColor="#212121"
+            android:textSize="18sp" />
 
         <TextView
             android:id="@+id/tvParticipantCalories"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Calorie bruciate = 0 kcal"
-            android:textSize="18sp"
-            android:textColor="#212121"
             android:layout_marginBottom="8dp"
             android:drawableStart="@drawable/ic_goal_calories"
             android:drawablePadding="12dp"
-            app:drawableTint="#FF5722"/>
+            android:text="Calories = 0 kcal"
+            android:textColor="#212121"
+            android:textSize="18sp"
+            app:drawableTint="#FF5722" />
 
         <TextView
             android:id="@+id/tvParticipantSpeed"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Velocità media = 0.0 km/h"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:textColor="#4CAF50"
             android:drawableStart="@drawable/ic_run"
             android:drawablePadding="12dp"
-            app:drawableTint="#4CAF50"/>
+            android:text="Average speed = 0.0 km/h"
+            android:textColor="#4CAF50"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            app:drawableTint="#4CAF50" />
 
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

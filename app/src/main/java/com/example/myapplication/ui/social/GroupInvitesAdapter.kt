@@ -27,9 +27,8 @@ class GroupInvitesAdapter(
 
     override fun onBindViewHolder(holder: InviteViewHolder, position: Int) {
         val invite = invites[position]
-        // Utilizza i dati corretti dal tuo backend (invitedBy è un oggetto UserResponse)
-        val inviterName = invite.invitedBy?.display_name ?: invite.invitedBy?.email ?: "Un utente"
-        holder.tvMessage.text = "$inviterName ti ha invitato al gruppo ${invite.group_name ?: "Senza Nome"}"
+        val inviterName = invite.invitedBy?.display_name ?: invite.invitedBy?.email ?: "A user"
+        holder.tvMessage.text = "$inviterName invited you to group ${invite.group_name ?: "Unnamed"}"
         
         holder.btnAccept.setOnClickListener { onRespond(invite.id, "accepted") }
         holder.btnReject.setOnClickListener { onRespond(invite.id, "rejected") }

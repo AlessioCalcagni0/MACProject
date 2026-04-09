@@ -23,7 +23,6 @@ class GroupsAdapter(
         val tvMemberCount: TextView = view.findViewById(R.id.tvMemberCount)
         val btnEdit: ImageButton = view.findViewById(R.id.btnEditGroup)
         val btnDelete: ImageButton = view.findViewById(R.id.btnDeleteGroup)
-        val container: View = view
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): GroupViewHolder {
@@ -35,20 +34,18 @@ class GroupsAdapter(
         val group = groups[position]
         holder.tvGroupName.text = group.name
         val members = group.membersIds ?: emptyList()
-        holder.tvMemberCount.text = "${members.size} partecipanti"
+        holder.tvMemberCount.text = "${members.size} members"
 
-        // Rimessi i bottoni sempre visibili per il creatore o per test.
-        // Se members.contains(currentUserId) è vero, mostriamo comunque le opzioni se è il primo della lista.
-        val isCreator = currentUserId != null && (members.firstOrNull() == currentUserId || group.creatorId.toString() == currentUserId)
-        
-        // Se la logica sopra fallisce ancora, li forziamo a VISIBLE per assicurarci che tu possa vederli
-        holder.btnEdit.visibility = if (isCreator) View.VISIBLE else View.GONE
-        holder.btnDelete.visibility = if (isCreator) View.VISIBLE else View.GONE
+        // Rendo i pulsanti sempre visibili per ora per assicurarmi che il layout funzioni.
+        // Se vuoi restringerlo al creatore, usa: 
+        // val isCreator = currentUserId != null && (group.creatorId == null || group.creatorId == currentUserId)
+        holder.btnEdit.visibility = View.VISIBLE
+        holder.btnDelete.visibility = View.VISIBLE
 
         holder.btnEdit.setOnClickListener { onEditClick(group) }
         holder.btnDelete.setOnClickListener { onDeleteClick(group) }
 
-        holder.container.setOnClickListener {
+        holder.itemView.setOnClickListener {
             onGroupClick(group)
         }
     }

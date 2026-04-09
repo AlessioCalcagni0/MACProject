@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FFFFFF">
+    android:background="#000000">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -21,18 +21,18 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Inizia Corsa"
+                android:text="Start run"
                 android:textSize="24sp"
                 android:textStyle="bold"
-                android:textColor="#000000"
+                android:textColor="#FFFFFF"
                 android:layout_marginBottom="24dp" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Seleziona il tuo obiettivo"
+                android:text="Select your objective"
                 android:textSize="16sp"
-                android:textColor="#555555"
+                android:textColor="#BBBBBB"
                 android:layout_marginBottom="16dp" />
 
             <RadioGroup
@@ -46,7 +46,7 @@
                     android:id="@+id/rbTime"
                     android:layout_width="match_parent"
                     android:layout_height="64dp"
-                    android:text="Obiettivo Tempo"
+                    android:text="Time"
                     android:background="@drawable/selector_goal_background"
                     android:button="@null"
                     android:drawableStart="@drawable/ic_goal_time"
@@ -62,7 +62,7 @@
                     android:id="@+id/rbDistance"
                     android:layout_width="match_parent"
                     android:layout_height="64dp"
-                    android:text="Obiettivo Distanza"
+                    android:text="Distance"
                     android:background="@drawable/selector_goal_background"
                     android:button="@null"
                     android:drawableStart="@drawable/ic_goal_distance"
@@ -78,7 +78,7 @@
                     android:id="@+id/rbCalories"
                     android:layout_width="match_parent"
                     android:layout_height="64dp"
-                    android:text="Obiettivo Calorie"
+                    android:text="Calories"
                     android:background="@drawable/selector_goal_background"
                     android:button="@null"
                     android:drawableStart="@drawable/ic_goal_calories"
@@ -90,6 +90,7 @@
                     android:textStyle="bold" />
             </RadioGroup>
 
+            <!-- Layout Selettori Valori (Modernizzato per tema scuro) -->
             <LinearLayout
                 android:id="@+id/layoutPickers"
                 android:layout_width="match_parent"
@@ -98,45 +99,51 @@
                 android:gravity="center"
                 android:visibility="gone"
                 android:layout_marginBottom="32dp"
-                android:background="#F9F9F9"
-                android:padding="16dp">
+                android:background="#1A1A1A"
+                android:padding="24dp">
 
                 <NumberPicker
                     android:id="@+id/pickerValueMain"
                     android:layout_width="wrap_content"
-                    android:layout_height="120dp" />
+                    android:layout_height="140dp"
+                    android:theme="@style/NumberPickerWhite" />
 
                 <TextView
                     android:id="@+id/tvSeparator"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text=":"
-                    android:textSize="24sp"
-                    android:layout_marginHorizontal="8dp" />
+                    android:textSize="28sp"
+                    android:textStyle="bold"
+                    android:textColor="#FFFFFF"
+                    android:layout_marginHorizontal="12dp" />
 
                 <NumberPicker
                     android:id="@+id/pickerValueSub"
                     android:layout_width="wrap_content"
-                    android:layout_height="120dp" />
+                    android:layout_height="140dp"
+                    android:theme="@style/NumberPickerWhite" />
 
                 <TextView
                     android:id="@+id/tvUnit"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="min"
-                    android:textSize="18sp"
-                    android:layout_marginStart="8dp" />
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="#FFFFFF"
+                    android:layout_marginStart="16dp" />
             </LinearLayout>
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnStartRun"
                 android:layout_width="match_parent"
                 android:layout_height="64dp"
-                android:text="INIZIA CORSA"
+                android:text="START RUN"
                 android:textSize="18sp"
                 android:textStyle="bold"
                 app:cornerRadius="32dp"
-                android:backgroundTint="#6200EE" />
+                android:backgroundTint="#00BFFF" />
         </LinearLayout>
 
         <!-- Sezione STATISTICHE IN CORSA -->
@@ -153,7 +160,7 @@
                 android:layout_marginBottom="16dp"
                 app:cardCornerRadius="16dp"
                 app:cardElevation="4dp"
-                app:strokeColor="#6200EE"
+                app:strokeColor="#00BFFF"
                 app:strokeWidth="2dp">
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -164,7 +171,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="OBIETTIVO DA RAGGIUNGERE"
+                        android:text="Objective:"
                         android:textSize="12sp"
                         android:textColor="#777"
                         android:textStyle="bold" />
@@ -174,7 +181,7 @@
                         android:layout_height="wrap_content"
                         android:text="-"
                         android:textSize="24sp"
-                        android:textColor="#6200EE"
+                        android:textColor="#00BFFF"
                         android:textStyle="bold" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
@@ -210,8 +217,8 @@
                         android:orientation="vertical"
                         android:padding="12dp"
                         android:gravity="center">
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Durata" android:textColor="#777" android:textSize="12sp" />
-                        <TextView android:id="@+id/tvDuration" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="00:00:00" android:textSize="18sp" android:textStyle="bold" android:textColor="#6200EE" />
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Duration" android:textColor="#777" android:textSize="12sp" />
+                        <TextView android:id="@+id/tvDuration" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="00:00:00" android:textSize="18sp" android:textStyle="bold" android:textColor="#00BFFF" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
@@ -227,8 +234,8 @@
                         android:orientation="vertical"
                         android:padding="12dp"
                         android:gravity="center">
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Distanza" android:textColor="#777" android:textSize="12sp" />
-                        <TextView android:id="@+id/tvDistance" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0.00 km" android:textSize="18sp" android:textStyle="bold" android:textColor="#6200EE" />
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Distance" android:textColor="#777" android:textSize="12sp" />
+                        <TextView android:id="@+id/tvDistance" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0.00 km" android:textSize="18sp" android:textStyle="bold" android:textColor="#00BFFF" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
@@ -244,8 +251,8 @@
                         android:orientation="vertical"
                         android:padding="12dp"
                         android:gravity="center">
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Velocità" android:textColor="#777" android:textSize="12sp" />
-                        <TextView android:id="@+id/tvSpeed" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0.0 km/h" android:textSize="18sp" android:textStyle="bold" android:textColor="#6200EE" />
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Speed" android:textColor="#777" android:textSize="12sp" />
+                        <TextView android:id="@+id/tvSpeed" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0.0 km/h" android:textSize="18sp" android:textStyle="bold" android:textColor="#00BFFF" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
@@ -261,8 +268,26 @@
                         android:orientation="vertical"
                         android:padding="12dp"
                         android:gravity="center">
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Calorie" android:textColor="#777" android:textSize="12sp" />
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Calories" android:textColor="#777" android:textSize="12sp" />
                         <TextView android:id="@+id/tvCalories" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0 kcal" android:textSize="18sp" android:textStyle="bold" android:textColor="#FF9800" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- NUOVA CARD PASSI -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_columnWeight="1"
+                    android:layout_margin="4dp"
+                    app:cardCornerRadius="12dp">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="12dp"
+                        android:gravity="center">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Steps" android:textColor="#777" android:textSize="12sp" />
+                        <TextView android:id="@+id/tvSteps" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0" android:textSize="18sp" android:textStyle="bold" android:textColor="#4CAF50" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
             </GridLayout>
@@ -295,7 +320,7 @@
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Scatta Foto"
+                        android:text="Take a picture"
                         app:icon="@android:drawable/ic_menu_camera" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
@@ -312,7 +337,7 @@
                     android:layout_height="56dp"
                     android:layout_weight="1"
                     android:layout_marginEnd="8dp"
-                    android:text="PAUSA"
+                    android:text="PAUSE"
                     android:backgroundTint="#FF9800"
                     app:cornerRadius="28dp" />
 
@@ -322,7 +347,7 @@
                     android:layout_height="56dp"
                     android:layout_weight="1"
                     android:layout_marginStart="8dp"
-                    android:text="FINISCI CORSA"
+                    android:text="FINISH RUN"
                     android:backgroundTint="@android:color/holo_red_light"
                     app:cornerRadius="28dp" />
             </LinearLayout>

@@ -10,6 +10,7 @@ class SyncUserResponse(BaseModel):
     email: str | None
     display_name: str | None
     provider: str
+    weight: float | None
 
     class Config:
         from_attributes = True
@@ -20,6 +21,7 @@ class SyncUserPayload(BaseModel):
     surname: str | None = None
     display_name: str | None = None
     email: str | None = None
+    weight: float | None = None
 
 
 class FirebaseUserResponse(BaseModel):
@@ -36,6 +38,7 @@ class FriendUserResponse(BaseModel):
     surname: str | None
     email: str | None
     display_name: str | None
+    weight: float | None
 
 
 class FriendRequestResponse(BaseModel):
@@ -51,11 +54,13 @@ class FriendSearchResponse(BaseModel):
     surname: str | None
     email: str | None
     display_name: str | None
+    weight: float | None
 
 
 class FriendRequestActionResponse(BaseModel):
     status: str
     request_id: UUID
+    to_user_id: str | None = None
 
 
 class GroupInviteUserResponse(BaseModel):
@@ -64,6 +69,7 @@ class GroupInviteUserResponse(BaseModel):
     surname: str | None
     email: str | None
     display_name: str | None
+    weight: float | None
 
 
 class GroupInviteResponse(BaseModel):
@@ -90,8 +96,9 @@ class GroupCreateRequest(BaseModel):
 class GroupResponse(BaseModel):
     group_id: UUID
     name: str | None
-    creator_id: UUID | None
+    creator_id: str | None
     members_ids: list[str] | None
+    members_names: dict[str, str] | None = None
     created_at: str | None
 
 
