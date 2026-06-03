@@ -144,6 +144,7 @@ MACProject/
 - Python 3.10+
 - A running instance of PostgreSQL (local or cloud)
 - Google Cloud account
+- Git (to clone the repository)
 - Firebase project (Follow the steps in the README in the folder path backend/backend/secrets)
 
 ---
@@ -151,52 +152,81 @@ MACProject/
 ## Mobile Setup
 
 1. Clone repository:
+Open your terminal and clone the project to your local machine:
 
 ```bash
 git clone https://github.com/AlessioCalcagni0/MACProject
 ```
-Open in Android Studio
 
+2. Open in Android Studio
+- Open Android Studio.
+- Click on File > Open (or "Open an existing project").
+- Navigate to the MACProject folder and select it. Wait for Gradle to finish its initial sync.
+   
+3. Add Firebase Configuration
+To enable Firebase Authentication and Cloud Storage, you need your project-specific configuration file.
+- Download the google-services.json file from your Firebase Console.
+- Place this file directly inside the app/ directory of your project:
 
+MACProject/
+└── app/
+    └── google-services.json  <-- Place it here
 
+4. Configure the Google Maps API Key
+The app uses the Google Maps SDK to track runs. You need to provide a valid API key.
+Obtain an API key from the Google Cloud Console with the Maps SDK for Android enabled.
+- Open MACProject/app/src/main/AndroidManifest.xml.
+- Locate the meta-data tag for the Maps API and insert your key:
 
-Add:
+```bash
+<meta-data
+    android:name="com.google.android.geo.API_KEY"
+    android:value="YOUR_GOOGLE_MAPS_API_KEY_HERE" />
+```
+5. Build and Run
+- Sync project with Gradle files (Click the "Sync" icon in the top right).
+- Connect a physical Android device via USB/Wi-Fi, or start an Android Emulator.
+- Click the green Run 'app' button in the toolbar.
 
+## Backend Setup
+You have two options for running the backend: Locally (Manual) or via Docker.
+- Navigate to the Backend Directory
+```bash
+cd MACProject/backend/backend/
+```
 
+### Manual Local Setup
+1. Install dependencies
+You can install the dependencies using the provided requirements file:
+```bash
+pip install -r requirements.txt
+```
+2. Configure Firebase Admin SDK
+The backend needs the Firebase service account key to verify user tokens.
+- Download your service account JSON file from Firebase Console (Project Settings > Service Accounts > Generate New Private Key).
+- Place it in the secrets folder (e.g., MACProject/backend/backend/secrets/service-account.json).
 
+3. Configure environment variables
+Export the necessary environment variables so the FastAPI app can connect to your database and Firebase.
+```bash
+export DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DB_NAME"
+export FIREBASE_CREDENTIALS_PATH="./secrets/service-account.json"
+```
+4. Run the server
+Start the FastAPI server using Uvicorn:
+```bash
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+Your API will now be live at http://127.0.0.1:8000.
 
+### Docker Setup
+1. Ensure your Firebase JSON is in the backend/secrets/ folder.
+2. Start the containers in detached mode:
+```bash
+docker-compose up --build -d
+```
+Docker will automatically pull the PostgreSQL image, build your FastAPI application, link them together, and expose the API on port 8000.
 
-
-
-
-google-services.json (Firebase)
-
-
-
-
-Google Maps API key
-
-
-
-
-
-
-
-
-Run app on device/emulator
-
-
-
-
-
- Backend Setup
-
-
-
-Install dependencies
-pip install fastapi uvicorn sqlalchemy psycopg2-binary firebase-admin
-
-Configure environment variables
-export DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DB_NAME
-export FIREBASE_CREDENTIALS_PATH=service-account.json
+Connecting the App to the Local Backend:
+If testing on a physical device, ensure your phone and computer are on the same Wi-Fi network. In your Android app's RetrofitClient, change the BASE_URL from localhost to your computer's local IP address (e.g., http://192.168.1.X:8000/). If using the Android Emulator, use http://10.0.2.2:8000/.
 
