@@ -154,7 +154,7 @@ MACProject/
 
 ```bash
 git clone https://github.com/AlessioCalcagni0/MACProject
-
+```
 Open in Android Studio
 
 
