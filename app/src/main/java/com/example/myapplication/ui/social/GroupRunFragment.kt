@@ -572,7 +572,8 @@ class GroupRunFragment : Fragment(), OnMapReadyCallback {
             namesMap = userNamesMap,
             durationSeconds = seconds,
             isGroup = true,
-            runId = historyId
+            runId = historyId,
+            memberIds = memberIds
         )
 
         (activity as? MainActivity)?.navigateToFragment(summaryFragment, "SUMMARY", "Run Summary")

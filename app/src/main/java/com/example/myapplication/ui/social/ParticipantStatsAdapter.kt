@@ -11,6 +11,7 @@ import com.google.firebase.auth.FirebaseAuth
 import java.util.Locale
 
 object ParticipantColorProvider {
+
     private val colors = listOf(
         Color.parseColor("#2196F3"), // blu
         Color.parseColor("#F44336"), // rosso
@@ -18,14 +19,24 @@ object ParticipantColorProvider {
         Color.parseColor("#9C27B0")  // viola
     )
 
-    fun getColorForUser(userId: String, memberIds: List<String>): Int {
-        val index = memberIds.indexOf(userId)
+    fun getColorForUser(
+        userId: String,
+        memberIds: List<String>,
+        fallbackOrder: List<String> = emptyList()
+    ): Int {
+        val indexFromMembers = memberIds.indexOf(userId)
 
-        return if (index >= 0) {
-            colors[index % colors.size]
-        } else {
-            colors[0]
+        if (indexFromMembers >= 0) {
+            return colors[indexFromMembers % colors.size]
         }
+
+        val indexFromFallback = fallbackOrder.indexOf(userId)
+
+        if (indexFromFallback >= 0) {
+            return colors[indexFromFallback % colors.size]
+        }
+
+        return colors[0]
     }
 }
 
@@ -43,8 +54,12 @@ class ParticipantStatsAdapter(
         val indicator: View = view.findViewById(R.id.viewUserIndicator)
     }
 
+    init {
+        stats = sortByCorrectOrder(stats)
+    }
+
     fun updateData(newData: List<ParticipantLiveStats>) {
-        stats = sortByMemberOrder(newData)
+        stats = sortByCorrectOrder(newData)
         notifyDataSetChanged()
     }
 
@@ -55,15 +70,27 @@ class ParticipantStatsAdapter(
 
     fun updateMemberIds(newMemberIds: List<String>) {
         memberIds = newMemberIds
-        stats = sortByMemberOrder(stats)
+        stats = sortByCorrectOrder(stats)
         notifyDataSetChanged()
     }
 
-    private fun sortByMemberOrder(list: List<ParticipantLiveStats>): List<ParticipantLiveStats> {
+    private fun fallbackOrder(): List<String> {
+        return stats.map { it.userId }.distinct()
+    }
+
+    private fun sortByCorrectOrder(list: List<ParticipantLiveStats>): List<ParticipantLiveStats> {
+        val fallback = list.map { it.userId }.distinct()
+
         return list.sortedWith(
             compareBy<ParticipantLiveStats> {
-                val index = memberIds.indexOf(it.userId)
-                if (index >= 0) index else Int.MAX_VALUE
+                val indexFromMembers = memberIds.indexOf(it.userId)
+                val indexFromFallback = fallback.indexOf(it.userId)
+
+                when {
+                    indexFromMembers >= 0 -> indexFromMembers
+                    indexFromFallback >= 0 -> indexFromFallback
+                    else -> Int.MAX_VALUE
+                }
             }.thenBy { it.userId }
         )
     }
@@ -76,30 +103,36 @@ class ParticipantStatsAdapter(
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        val s = stats[position]
-        val isMe = s.userId == FirebaseAuth.getInstance().currentUser?.uid
+        val stat = stats[position]
+        val isMe = stat.userId == FirebaseAuth.getInstance().currentUser?.uid
 
         val displayName = when {
             isMe -> "You"
-            namesMap.containsKey(s.userId) -> namesMap[s.userId]
+            namesMap.containsKey(stat.userId) -> namesMap[stat.userId]
             else -> "Participant ${position + 1}"
         }
+
+        val fallback = fallbackOrder()
+
+        val color = ParticipantColorProvider.getColorForUser(
+            userId = stat.userId,
+            memberIds = memberIds,
+            fallbackOrder = fallback
+        )
 
         holder.tvName.text = displayName
 
         holder.tvDistance.text =
-            String.format(Locale.getDefault(), "Distance: %.2f km", s.distance)
+            String.format(Locale.getDefault(), "Distance: %.2f km", stat.distance)
 
         holder.tvCalories.text =
-            String.format(Locale.getDefault(), "Calories: %d kcal", s.calories)
+            String.format(Locale.getDefault(), "Calories: %d kcal", stat.calories)
 
         holder.tvSpeed.text =
-            String.format(Locale.getDefault(), "Average speed: %.1f km/h", s.speed)
+            String.format(Locale.getDefault(), "Average speed: %.1f km/h", stat.speed)
 
-        holder.indicator.setBackgroundColor(
-            ParticipantColorProvider.getColorForUser(s.userId, memberIds)
-        )
+        holder.indicator.setBackgroundColor(color)
     }
 
-    override fun getItemCount() = stats.size
+    override fun getItemCount(): Int = stats.size
 }
