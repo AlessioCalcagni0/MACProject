@@ -35,6 +35,7 @@ The user starts a run on the mobile app (selecting his goal from: time, distance
 - Real-time tracking of your run using precise GPS data
 - Performance Metrics: Accurate tracking of essential data including distance, speed, duration, and calories burned estimation.
 - Set custom personal targets based on time, distance, or calorie burn
+- Local Caching: Runs are saved locally using an SQLite (Room) database if the user loses internet connection during a run.
 
 ---
 
@@ -88,43 +89,80 @@ Here is how the specific course requirements were fulfilled in this project:
 
 ## Project Structure
 MACProject/
-
 │
-
-├── app/
-
-│   ├── src/main/java/com/example/myapplication/
-
-│   │   ├── ui/
-
-
-
+├── app/                                    <-- Android Application
+│   ├── google-services.json
+│   ├── build.gradle.kts
+│   └── src/
+│       ├── main/
+│       │   ├── AndroidManifest.xml
+│       │   ├── java/com/example/myapplication/
+│       │   │   ├── MyApplication.kt
+│       │   │   │
+│       │   │   ├── data/                   
+│       │   │   │   ├── auth/
+│       │   │   │   ├── home/
+│       │   │   │   ├── run/                
+│       │   │   │   ├── social/
+│       │   │   │   ├── stats/
+│       │   │   │   ├── AppDatabase.kt      
+│       │   │   │   └── RetrofitClient.kt
+│       │   │   │
+│       │   │   ├── domain/                 
+│       │   │   │   ├── auth/               
+│       │   │   │   ├── home/
+│       │   │   │   ├── run/
+│       │   │   │   ├── social/
+│       │   │   │   └── stats/
+│       │   │   │
+│       │   │   ├── ui/                    
+│       │   │   │   ├── auth/
+│       │   │   │   ├── home/
+│       │   │   │   ├── profile/
+│       │   │   │   ├── run/                
+│       │   │   │   ├── social/
+│       │   │   │   ├── splash/
+│       │   │   │   ├── stats/
+│       │   │   │   └── theme/
+│       │   │   │
+│       │   │   └── utils/
+│       │   │       └── NetworkMonitor.kt   
+│       │   │
+│       │   └── res/                       
+│       │       ├── drawable/
+│       │       ├── layout/
+│       │       ├── menu/
+│       │       └── values/
+│       │
+│       ├── androidTest/                    
+│       └── test/                           
 │
-│   ├── res/
-
-│   │   ├── layout/
-
-│   │   ├── drawable/
-
+├── backend/                                <-- Python Backend Setup
+│   ├── docker-compose.yml                  
+│   ├── cloudrun.env.yaml                   
+│   │
+│   └── backend/                            <-- FastAPI Source Code
+│       ├── Dockerfile
+│       ├── requirements.txt
+│       ├── app/                           
+│       │   ├── main.py
+│       │   ├── database.py
+│       │   ├── models.py                   
+│       │   ├── schemas.py                  
+│       │   └── firebase_auth.py            
+│       │
+│       └── secrets/                        <-- Secure key storage
+│           ├── maccproject-...-adminsdk.json
+│           └── README.md
 │
-
-├── backend/
-
-│   ├── main.py
-
-│   ├── models.py
-
-│   ├── database.py
-
-│   ├── auth.py
-
-│   ├── schema.sql
-
-│   ├── Dockerfile
-
+├── documentation/                          
+│   ├── Application_architecture.png
+│   ├── NavGraph.png
+│   └── Storyboard.png
 │
-
-├── README.md
+├── build.gradle.kts
+├── settings.gradle.kts
+└── README.md
 
 
 
@@ -192,7 +230,7 @@ Obtain an API key from the Google Cloud Console with the Maps SDK for Android en
 You have two options for running the backend: Locally (Manual) or via Docker.
 - Navigate to the Backend Directory
 ```bash
-cd MACProject/backend/backend/
+cd MACProject/backend/
 ```
 
 ### Manual Local Setup
