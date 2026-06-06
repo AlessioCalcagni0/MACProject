@@ -111,45 +111,6 @@
                     android:text="utente@email.com"
                     android:textSize="16sp"
                     android:textColor="#333333" />
-
-                <!-- SEZIONE PESO -->
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="20dp"
-                    android:text="Weight (kg)"
-                    android:textSize="12sp"
-                    android:textColor="#999999" />
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
-
-                    <EditText
-                        android:id="@+id/etProfileWeight"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:inputType="numberDecimal"
-                        android:hint="Insert your weight"
-                        android:textSize="16sp"
-                        android:textColor="#333333"
-                        android:textStyle="bold"
-                        android:background="@null"
-                        android:paddingVertical="8dp"/>
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnUpdateWeight"
-                        style="@style/Widget.MaterialComponents.Button.TextButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Save"
-                        android:textSize="12sp"
-                        android:textColor="#00BFFF" />
-                </LinearLayout>
-
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

@@ -8,6 +8,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.example.myapplication.R
 import com.google.android.material.card.MaterialCardView
+import java.io.File
 
 class GroupPhotosAdapter(
     private var photos: List<String>,
@@ -37,7 +38,17 @@ class GroupPhotosAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val url = photos[position]
-        Glide.with(holder.ivPhoto.context).load(url).into(holder.ivPhoto)
+        val imageSource = if (url.startsWith("http")) {
+            url
+        } else {
+            File(url)
+        }
+
+        Glide.with(holder.ivPhoto.context)
+            .load(imageSource)
+            .placeholder(R.drawable.ic_run)
+            .error(R.drawable.ic_run)
+            .into(holder.ivPhoto)
 
         if (isSelectionEnabled) {
             holder.ivCheck.visibility = if (url == selectedPhotoUrl) View.VISIBLE else View.GONE

@@ -21,13 +21,29 @@ class RunViewModel(private val runRepository: RunRepository) : ViewModel() {
         }
     }
 
-    fun endRun(runId: String, distance: Double) {
+    fun endRun(
+        runId: String,
+        userId: String,
+        distance: Double,
+        speed: Double,
+        calories: Int,
+        isGoalAchieved: Boolean,
+        seconds: Int,
+        stepCount: Int,
+        goalValueText: String,
+        capturedPhotos: List<String>,
+        stats: List<ParticipantLiveStats>
+    ) {
         viewModelScope.launch {
-            runRepository.endRun(runId, distance)
+            runRepository.endRun(
+                runId, userId, distance, speed, calories, isGoalAchieved,
+                seconds, stepCount, goalValueText, capturedPhotos, stats
+            )
         }
     }
 
     fun saveRunToHistory(
+        runId: String,
         userId: String,
         distance: Double,
         speed: Double,
@@ -42,7 +58,7 @@ class RunViewModel(private val runRepository: RunRepository) : ViewModel() {
     ) {
         viewModelScope.launch {
             val key = runRepository.saveRunToHistory(
-                userId, distance, speed, calories, isGoalAchieved,
+                runId, userId, distance, speed, calories, isGoalAchieved,
                 seconds, stepCount, goalValueText, capturedPhotos, stats
             )
             onResult(key)

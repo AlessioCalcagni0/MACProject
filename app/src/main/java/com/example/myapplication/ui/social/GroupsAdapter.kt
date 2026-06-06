@@ -13,6 +13,7 @@ class GroupsAdapter(
     private var groups: List<GroupDetailedResponse>,
     private val userNamesMap: Map<String, String> = emptyMap(),
     private val currentUserId: String? = null,
+    private val showActions: Boolean = true,
     private val onGroupClick: (GroupDetailedResponse) -> Unit = {},
     private val onEditClick: (GroupDetailedResponse) -> Unit = {},
     private val onDeleteClick: (GroupDetailedResponse) -> Unit = {}
@@ -26,24 +27,41 @@ class GroupsAdapter(
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): GroupViewHolder {
-        val view = LayoutInflater.from(parent.context).inflate(R.layout.item_group, parent, false)
+        val view = LayoutInflater.from(parent.context)
+            .inflate(R.layout.item_group, parent, false)
+
         return GroupViewHolder(view)
     }
 
     override fun onBindViewHolder(holder: GroupViewHolder, position: Int) {
         val group = groups[position]
+
         holder.tvGroupName.text = group.name
+
         val members = group.membersIds ?: emptyList()
         holder.tvMemberCount.text = "${members.size} members"
 
-        // Rendo i pulsanti sempre visibili per ora per assicurarmi che il layout funzioni.
-        // Se vuoi restringerlo al creatore, usa: 
-        // val isCreator = currentUserId != null && (group.creatorId == null || group.creatorId == currentUserId)
-        holder.btnEdit.visibility = View.VISIBLE
-        holder.btnDelete.visibility = View.VISIBLE
+        val isCreator = currentUserId != null && group.creatorId == currentUserId
+        val canManageGroup = showActions && isCreator
 
-        holder.btnEdit.setOnClickListener { onEditClick(group) }
-        holder.btnDelete.setOnClickListener { onDeleteClick(group) }
+        if (canManageGroup) {
+            holder.btnEdit.visibility = View.VISIBLE
+            holder.btnDelete.visibility = View.VISIBLE
+
+            holder.btnEdit.setOnClickListener {
+                onEditClick(group)
+            }
+
+            holder.btnDelete.setOnClickListener {
+                onDeleteClick(group)
+            }
+        } else {
+            holder.btnEdit.visibility = View.GONE
+            holder.btnDelete.visibility = View.GONE
+
+            holder.btnEdit.setOnClickListener(null)
+            holder.btnDelete.setOnClickListener(null)
+        }
 
         holder.itemView.setOnClickListener {
             onGroupClick(group)

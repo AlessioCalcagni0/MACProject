@@ -1,14 +1,13 @@
 package com.example.myapplication.ui.home
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.WeatherResponse
 import com.example.myapplication.domain.home.ActivityRepository
 import com.example.myapplication.domain.home.WeatherRepository
 import com.example.myapplication.domain.home.PastRunData
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 class HomeViewModel(
@@ -19,25 +18,58 @@ class HomeViewModel(
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
     val uiState: StateFlow<HomeUiState> = _uiState
 
+    private val _weatherFlow = MutableStateFlow<WeatherData?>(null)
+    private var lastUserId: String? = null
+    private var lastLat: Double? = null
+    private var lastLon: Double? = null
+
     fun loadData(userId: String, lat: Double, lon: Double) {
+        if (lastUserId == userId && lastLat == lat && lastLon == lon && _uiState.value !is HomeUiState.Error) return
+        
+        lastUserId = userId
+        lastLat = lat
+        lastLon = lon
+        
         viewModelScope.launch {
-            try {
-                // Fetch weather
-                val weather = weatherRepository.getWeatherForecast(lat, lon)
-                val (weatherDesc, isBadWeather) = mapWeatherCode(weather.current.weather_code)
-                val advice = getRunningAdvice(weather.current.temperature_2m, isBadWeather)
-                
-                // Observe recent activities
-                activityRepository.getRecentActivities(userId)
-                    .catch { e ->
-                        _uiState.value = HomeUiState.Error(e.message ?: "Error loading activities")
-                    }
-                    .collect { activities ->
-                        _uiState.value = HomeUiState.Success(weather, activities, weatherDesc, advice)
-                    }
-            } catch (e: Exception) {
-                _uiState.value = HomeUiState.Error(e.message ?: "Unknown error")
+            _uiState.value = HomeUiState.Loading
+            
+            // 1. Avvia il recupero del meteo in background
+            launch {
+                try {
+                    val weather = weatherRepository.getWeatherForecast(lat, lon)
+                    val (weatherDesc, isBadWeather) = mapWeatherCode(weather.current.weather_code)
+                    val advice = getRunningAdvice(weather.current.temperature_2m, isBadWeather)
+                    _weatherFlow.value = WeatherData(weather, weatherDesc, advice)
+                } catch (e: Exception) {
+                    Log.e("HomeViewModel", "Weather fetch failed", e)
+                }
             }
+
+            // 2. Combina le attività con il meteo (che può essere null inizialmente)
+            activityRepository.getRecentActivities(userId)
+                .combine(_weatherFlow) { activities, weather ->
+                    if (weather != null) {
+                        HomeUiState.Success(weather.response, activities, weather.description, weather.advice)
+                    } else {
+                        HomeUiState.PartialSuccess(activities)
+                    }
+                }
+                .catch { e ->
+                    Log.e("HomeViewModel", "Data flow error", e)
+                    _uiState.value = HomeUiState.Error(e.message ?: "Unknown error")
+                }
+                .collect { newState ->
+                    _uiState.value = newState
+                }
+        }
+    }
+
+    fun retryConnection() {
+        val uid = lastUserId
+        val lat = lastLat
+        val lon = lastLon
+        if (uid != null && lat != null && lon != null) {
+            loadData(uid, lat, lon)
         }
     }
 
@@ -56,6 +88,8 @@ class HomeViewModel(
         else if (temp in 10.0..22.0) "Perfect weather for running! 🏃‍♂️✨" 
         else "Decent weather for running. Have a good workout! 👍"
     }
+
+    private data class WeatherData(val response: WeatherResponse, val description: String, val advice: String)
 }
 
 sealed class HomeUiState {
@@ -66,5 +100,6 @@ sealed class HomeUiState {
         val weatherDescription: String,
         val runningAdvice: String
     ) : HomeUiState()
+    data class PartialSuccess(val activities: List<PastRunData>) : HomeUiState()
     data class Error(val message: String) : HomeUiState()
 }

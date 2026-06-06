@@ -43,12 +43,12 @@
 
         <ImageButton
             android:id="@+id/btnEditGroup"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:src="@android:drawable/ic_menu_edit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:background="?attr/selectableItemBackgroundBorderless"
-            app:tint="#00BFFF"
-            android:contentDescription="Edit" />
+            android:contentDescription="Edit"
+            android:src="@android:drawable/ic_menu_edit"
+            app:tint="#00BFFF" />
 
         <ImageButton
             android:id="@+id/btnDeleteGroup"

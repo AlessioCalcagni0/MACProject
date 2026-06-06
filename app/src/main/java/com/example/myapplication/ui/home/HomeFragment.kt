@@ -17,11 +17,12 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.example.myapplication.R
-import com.example.myapplication.data.WeatherResponse
 import com.example.myapplication.domain.home.PastRunData
 import com.example.myapplication.ui.social.GroupRunSummaryFragment
+import com.example.myapplication.utils.NetworkMonitor
 import com.google.android.gms.location.LocationServices
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -36,6 +37,7 @@ class HomeFragment : Fragment() {
     private lateinit var rvHourly: RecyclerView
     
     private lateinit var viewModel: HomeViewModel
+    private lateinit var networkMonitor: NetworkMonitor
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         val view = inflater.inflate(R.layout.fragment_home, container, false)
@@ -49,10 +51,12 @@ class HomeFragment : Fragment() {
         rvRecent.layoutManager = LinearLayoutManager(context)
         rvHourly.layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
         
-        val factory = HomeViewModelFactory()
+        val factory = HomeViewModelFactory(requireContext())
         viewModel = ViewModelProvider(this, factory)[HomeViewModel::class.java]
+        networkMonitor = NetworkMonitor(requireContext())
         
         observeUiState()
+        observeNetwork()
         checkLocationPermission()
         
         return view
@@ -62,24 +66,42 @@ class HomeFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.uiState.collect { state ->
                 when (state) {
-                    is HomeUiState.Loading -> { }
+                    is HomeUiState.Loading -> {
+                        // Opcionale: mostra uno spinner o uno stato di caricamento
+                    }
                     is HomeUiState.Success -> {
-                        updateWeatherUI(state)
+                        updateWeatherUI(state.weather, state.weatherDescription, state.runningAdvice)
                         rvRecent.adapter = RecentActivitiesAdapter(state.activities) { data -> openRunDetails(data) }
                     }
-                    is HomeUiState.Error -> { }
+                    is HomeUiState.PartialSuccess -> {
+                        // Mostriamo le attività anche se il meteo è ancora in caricamento
+                        rvRecent.adapter = RecentActivitiesAdapter(state.activities) { data -> openRunDetails(data) }
+                        tvCity.text = "Loading weather..."
+                    }
+                    is HomeUiState.Error -> {
+                        tvCity.text = "Error loading data"
+                        tvWeatherDesc.text = state.message
+                    }
                 }
             }
         }
     }
 
-    private fun updateWeatherUI(state: HomeUiState.Success) {
-        val response = state.weather
-        val current = response.current
+    private fun observeNetwork() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            networkMonitor.isConnected.collectLatest { isConnected ->
+                if (isConnected) {
+                    viewModel.retryConnection()
+                }
+            }
+        }
+    }
+
+    private fun updateWeatherUI(response: com.example.myapplication.data.WeatherResponse, description: String, advice: String) {
         tvCity.text = "Current Weather"
-        tvTemp.text = "${current.temperature_2m.toInt()}°C"
-        tvWeatherDesc.text = state.weatherDescription
-        tvRunningAdvice.text = state.runningAdvice
+        tvTemp.text = "${response.current.temperature_2m.toInt()}°C"
+        tvWeatherDesc.text = description
+        tvRunningAdvice.text = advice
 
         val hourly = response.hourly
         val times = hourly.time
@@ -92,10 +114,18 @@ class HomeFragment : Fragment() {
         val now = System.currentTimeMillis()
 
         for (i in times.indices) {
-            val timeStr = times[i]
-            val date = sdfInput.parse(timeStr)
-            if (date != null && date.time > now - 3600000 && hourlyList.size < 24) {
-                hourlyList.add(HourlyWeatherData(sdfOutput.format(date), temps[i].toInt(), codes[i], precipProbs[i]))
+            try {
+                val date = sdfInput.parse(times[i])
+                if (date != null && date.time > now - 3600000 && hourlyList.size < 24) {
+                    hourlyList.add(HourlyWeatherData(
+                        sdfOutput.format(date), 
+                        temps[i].toInt(), 
+                        codes[i], 
+                        precipProbs.getOrElse(i) { 0 }
+                    ))
+                }
+            } catch (e: Exception) {
+                // Skip invalid entries
             }
         }
         rvHourly.adapter = HourlyWeatherAdapter(hourlyList)
@@ -105,7 +135,7 @@ class HomeFragment : Fragment() {
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             getDeviceLocation()
         } else {
-            triggerDataLoad(41.89, 12.49) // Default Rome
+            triggerDataLoad(41.89, 12.49)
         }
     }
 
@@ -128,7 +158,6 @@ class HomeFragment : Fragment() {
 
     private fun openRunDetails(data: PastRunData) {
         val mainActivity = activity as? MainActivity ?: return
-        // PASSAGGIO DELLA MAPPA DEI NOMI SALVATA (participantNames)
         val summaryFragment = GroupRunSummaryFragment.newInstance(
             data.stats, data.photos, data.participantNames, data.duration,
             isGroup = (data.type == "group"), runId = data.id, coverPhoto = data.coverPhoto
@@ -166,9 +195,42 @@ class RecentActivitiesAdapter(private val activities: List<PastRunData>, private
         val act = activities[position]; val prefix = if (act.type == "single") "Single Run" else "Group Run"
         holder.tvName.text = if (act.name.equals("Run", true) || act.name.equals(prefix, true)) prefix else "$prefix: ${act.name}"
         holder.tvDate.text = java.text.DateFormat.getDateTimeInstance().format(java.util.Date(act.timestamp))
-        if (act.coverPhoto != null) Glide.with(holder.itemView.context).load(act.coverPhoto).into(holder.ivCover)
-        else if (act.photos.isNotEmpty()) Glide.with(holder.itemView.context).load(act.photos[0]).into(holder.ivCover)
-        else { holder.ivCover.setImageResource(R.drawable.ic_run); holder.ivCover.setColorFilter(Color.parseColor("#6200EE")) }
+
+        val imageSource = when {
+            !act.coverPhoto.isNullOrBlank() -> act.coverPhoto
+            act.photos.isNotEmpty() -> act.photos[0]
+            else -> null
+        }
+
+        if (imageSource != null) {
+            val glideSource = if (imageSource.startsWith("http")) {
+                imageSource
+            } else {
+                java.io.File(imageSource)
+            }
+
+            holder.ivCover.clearColorFilter()
+
+            Glide.with(holder.itemView.context)
+                .load(glideSource)
+                .placeholder(R.drawable.ic_run)
+                .error(R.drawable.ic_run)
+                .into(holder.ivCover)
+        } else {
+            holder.ivCover.setImageResource(R.drawable.ic_run)
+            holder.ivCover.setColorFilter(Color.parseColor("#6200EE"))
+        }
+        
+        if (imageSource != null) {
+            Glide.with(holder.itemView.context)
+                .load(imageSource)
+                .placeholder(R.drawable.ic_run)
+                .into(holder.ivCover)
+        } else {
+            holder.ivCover.setImageResource(R.drawable.ic_run)
+            holder.ivCover.setColorFilter(Color.parseColor("#6200EE"))
+        }
+
         holder.itemView.setOnClickListener { onClick(act) }
     }
     override fun getItemCount() = activities.size

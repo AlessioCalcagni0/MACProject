@@ -17,8 +17,12 @@ class StatsViewModel(private val statsRepository: StatsRepository) : ViewModel()
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
 
+    private var lastUserId: String? = null
+
     fun loadActivities(userId: String) {
+        lastUserId = userId
         viewModelScope.launch {
+            _error.value = null
             statsRepository.getRecentActivities(userId)
                 .catch { e ->
                     _error.value = e.message ?: "Error loading activities"
@@ -26,6 +30,13 @@ class StatsViewModel(private val statsRepository: StatsRepository) : ViewModel()
                 .collect { list ->
                     _activities.value = list
                 }
+        }
+    }
+
+    fun retryConnection() {
+        val uid = lastUserId
+        if (uid != null && _error.value != null) {
+            loadActivities(uid)
         }
     }
 }

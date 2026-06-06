@@ -37,6 +37,16 @@ def startup() -> None:
 def root():
     return {"message": "Backend running"}
 
+@app.get("/debug/firebase")
+def debug_firebase():
+    import os
+
+    path = os.getenv("FIREBASE_CREDENTIALS_PATH")
+
+    return {
+        "firebase_credentials_path": path,
+        "exists": os.path.exists(path) if path else False,
+    }
 
 def firebase_uid_to_uuid(firebase_uid: str | None) -> uuid.UUID:
     if not firebase_uid:

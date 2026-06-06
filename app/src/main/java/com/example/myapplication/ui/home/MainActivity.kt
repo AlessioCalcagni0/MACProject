@@ -9,6 +9,7 @@ import androidx.fragment.app.FragmentManager
 import com.bumptech.glide.Glide
 import com.example.myapplication.R
 import com.example.myapplication.data.RetrofitClient
+import com.example.myapplication.data.SyncUserPayload
 import com.example.myapplication.ui.profile.ProfileFragment
 import com.example.myapplication.ui.run.RunFragment
 import com.example.myapplication.ui.social.SocialFragment
@@ -49,7 +50,6 @@ class MainActivity : AppCompatActivity() {
         updateToolbarProfileImage()
 
         if (savedInstanceState == null) {
-            // Inizializzazione sulla Home
             switchFragment(TAG_HOME, "Home") { HomeFragment() }
         }
 
@@ -70,7 +70,6 @@ class MainActivity : AppCompatActivity() {
 
     fun navigateToFragment(fragment: Fragment, tag: String, title: String) {
         val transaction = supportFragmentManager.beginTransaction()
-        // Nascondiamo il frammento attivo (es. SocialFragment)
         activeFragment?.let { if (it.isAdded) transaction.hide(it) }
         transaction.add(R.id.nav_host_fragment, fragment, tag)
         transaction.addToBackStack(tag)
@@ -88,10 +87,7 @@ class MainActivity : AppCompatActivity() {
             TAG_STATS -> R.id.nav_stats
             else -> -1
         }
-        
         if (menuId != -1) {
-            // Impostando selectedItemId, viene triggerato il listener della BottomNav
-            // che a sua volta chiama switchFragment(...) con la pulizia corretta.
             bottomNavigation.selectedItemId = menuId
         } else if (tag == TAG_PROFILE) {
             switchFragment(TAG_PROFILE, "Profile") { ProfileFragment() }
@@ -100,26 +96,20 @@ class MainActivity : AppCompatActivity() {
 
     private fun switchFragment(tag: String, title: String, creator: () -> Fragment) {
         val fm = supportFragmentManager
-        
-        // 1. Pulizia immediata del backstack (rimuove Lobby, Run, Summary e ripristina stati precedenti)
         fm.popBackStackImmediate(null, FragmentManager.POP_BACK_STACK_INCLUSIVE)
-        
         val transaction = fm.beginTransaction()
 
-        // 2. Rimuoviamo manualmente i frammenti "speciali" se ancora presenti
         fm.fragments.forEach { 
             if (it is GroupLobbyFragment || it is GroupRunFragment || it is GroupRunSummaryFragment) {
                 transaction.remove(it)
             }
         }
 
-        // 3. Nascondiamo TUTTI i frammenti principali per evitare sovrapposizioni (es. Social che riappare)
         val mainTags = listOf(TAG_HOME, TAG_RUN, TAG_SOCIAL, TAG_STATS, TAG_PROFILE)
         mainTags.forEach { t ->
             fm.findFragmentByTag(t)?.let { transaction.hide(it) }
         }
 
-        // 4. Mostriamo il frammento richiesto o lo creiamo se non esiste
         val existing = fm.findFragmentByTag(tag)
         if (existing != null) {
             transaction.show(existing)
@@ -132,8 +122,6 @@ class MainActivity : AppCompatActivity() {
         
         transaction.commit()
         tvToolbarTitle.text = title
-        
-        // Gestione visibilità icona profilo
         val isMainSection = tag in listOf(TAG_HOME, TAG_RUN, TAG_SOCIAL, TAG_STATS)
         ivToolbarProfile.visibility = if (isMainSection) View.VISIBLE else View.GONE
         updateToolbarProfileImage()
@@ -152,11 +140,14 @@ class MainActivity : AppCompatActivity() {
 
     private fun syncUserWithBackend() {
         val user = FirebaseAuth.getInstance().currentUser ?: return
-        val userData = mapOf("uid" to user.uid, "email" to (user.email ?: ""), "display_name" to (user.displayName ?: "Runner"))
+        val payload = SyncUserPayload(
+            displayName = user.displayName ?: "Runner",
+            email = user.email ?: ""
+        )
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val token = Tasks.await(user.getIdToken(false)).token
-                if (token != null) RetrofitClient.api.syncUser("Bearer $token", userData)
+                if (token != null) RetrofitClient.api.syncUser("Bearer $token", payload)
             } catch (e: Exception) {}
         }
     }

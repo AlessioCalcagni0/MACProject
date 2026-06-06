@@ -7,6 +7,7 @@ import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialException
 import com.example.myapplication.R
 import com.example.myapplication.data.RetrofitClient
+import com.example.myapplication.data.SyncUserPayload
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.FirebaseAuth
@@ -40,14 +41,14 @@ object AuthFirebaseDataSource {
             user?.updateProfile(profileUpdates)?.await()
 
             user?.getIdToken(true)?.await()?.token?.let { token ->
-                val userData = mapOf(
-                    "name" to name,
-                    "surname" to surname,
-                    "email" to email,
-                    "display_name" to displayName
+                val payload = SyncUserPayload(
+                    name = name,
+                    surname = surname,
+                    email = email,
+                    displayName = displayName
                 )
                 try {
-                    RetrofitClient.api.syncUser("Bearer $token", userData)
+                    RetrofitClient.api.syncUser("Bearer $token", payload)
                 } catch (e: Exception) {
                     Log.e(TAG, "Backend sync failed", e)
                 }
@@ -103,12 +104,12 @@ object AuthFirebaseDataSource {
                 user?.getIdToken(true)?.await()?.token?.let { token ->
                     val displayName = user.displayName ?: ""
                     
-                    val userData = mapOf(
-                        "name" to displayName,
-                        "email" to (user.email ?: "")
+                    val payload = SyncUserPayload(
+                        displayName = displayName,
+                        email = user.email ?: ""
                     )
                     try {
-                        RetrofitClient.api.syncUser("Bearer $token", userData)
+                        RetrofitClient.api.syncUser("Bearer $token", payload)
                     } catch (e: Exception) {
                         Log.e(TAG, "Backend sync failed after Google Login", e)
                     }

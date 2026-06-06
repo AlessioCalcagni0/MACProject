@@ -15,8 +15,11 @@ class SocialViewModel(private val repository: SocialRepository) : ViewModel() {
 
     private val _uiState = MutableStateFlow<SocialUiState>(SocialUiState.Loading)
     val uiState: StateFlow<SocialUiState> = _uiState
+    
+    private var lastUserId: String? = null
 
     fun loadData(userId: String) {
+        lastUserId = userId
         viewModelScope.launch {
             _uiState.value = SocialUiState.Loading
             try {
@@ -35,6 +38,13 @@ class SocialViewModel(private val repository: SocialRepository) : ViewModel() {
             } catch (e: Exception) {
                 _uiState.value = SocialUiState.Error(e.message ?: "Unknown error")
             }
+        }
+    }
+    
+    fun retryConnection() {
+        val uid = lastUserId
+        if (uid != null && _uiState.value is SocialUiState.Error) {
+            loadData(uid)
         }
     }
 

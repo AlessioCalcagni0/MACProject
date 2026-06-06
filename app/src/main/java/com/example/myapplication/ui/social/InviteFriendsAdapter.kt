@@ -30,16 +30,17 @@ class InviteFriendsAdapter(
 
     override fun onBindViewHolder(holder: InviteViewHolder, position: Int) {
         val friend = friends[position]
-        holder.tvName.text = friend.display_name ?: friend.email
+        // Updated to use displayName from UserResponse
+        holder.tvName.text = friend.displayName ?: friend.email
         
         holder.checkBox.setOnCheckedChangeListener(null)
-        holder.checkBox.isChecked = selectedFriendIds.contains(friend.id)
+        holder.checkBox.isChecked = selectedFriendIds.contains(friend.firebaseUid)
         
         holder.checkBox.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
-                selectedFriendIds.add(friend.id)
+                selectedFriendIds.add(friend.firebaseUid)
             } else {
-                selectedFriendIds.remove(friend.id)
+                selectedFriendIds.remove(friend.firebaseUid)
             }
         }
     }

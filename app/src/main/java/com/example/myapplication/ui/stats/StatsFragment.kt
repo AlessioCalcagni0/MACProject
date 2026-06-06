@@ -12,8 +12,10 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.example.myapplication.R
 import com.example.myapplication.domain.home.PastRunData
+import com.example.myapplication.utils.NetworkMonitor
 import com.google.android.material.button.MaterialButton
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -30,6 +32,7 @@ class StatsFragment : Fragment() {
     private lateinit var btnCalories: MaterialButton
     
     private lateinit var viewModel: StatsViewModel
+    private lateinit var networkMonitor: NetworkMonitor
     
     private val speedList = mutableListOf<Float>()
     private val distanceList = mutableListOf<Float>()
@@ -52,11 +55,13 @@ class StatsFragment : Fragment() {
         btnDistance = view.findViewById(R.id.btnShowDistance)
         btnCalories = view.findViewById(R.id.btnShowCalories)
         
-        val factory = StatsViewModelFactory()
+        val factory = StatsViewModelFactory(requireContext())
         viewModel = ViewModelProvider(this, factory)[StatsViewModel::class.java]
+        networkMonitor = NetworkMonitor(requireContext())
         
         setupButtons()
         observeViewModel()
+        observeNetwork()
         
         val userId = FirebaseAuth.getInstance().currentUser?.uid
         if (userId != null) {
@@ -64,6 +69,16 @@ class StatsFragment : Fragment() {
         }
         
         return view
+    }
+
+    private fun observeNetwork() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            networkMonitor.isConnected.collectLatest { isConnected ->
+                if (isConnected) {
+                    viewModel.retryConnection()
+                }
+            }
+        }
     }
 
     private fun setupButtons() {

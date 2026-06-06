@@ -14,6 +14,11 @@ import com.example.myapplication.data.auth.AuthRepositoryImpl
 import com.example.myapplication.domain.auth.RegisterUseCase
 import com.example.myapplication.ui.home.MainActivity
 import kotlinx.coroutines.launch
+import android.util.Log
+import com.example.myapplication.data.RetrofitClient
+import com.example.myapplication.data.SyncUserPayload
+import com.google.firebase.auth.FirebaseAuth
+
 
 class RegisterActivity : AppCompatActivity() {
 
@@ -53,6 +58,32 @@ class RegisterActivity : AppCompatActivity() {
         btnGoToLogin.setOnClickListener {
             startActivity(Intent(this, LoginActivity::class.java))
             finish()
+        }
+    }
+    private suspend fun syncUserDataOnRegister(
+        name: String,
+        surname: String,
+        email: String
+    ) {
+        val user = FirebaseAuth.getInstance().currentUser ?: return
+
+        try {
+            val tokenResult = com.google.android.gms.tasks.Tasks.await(user.getIdToken(true))
+            val token = "Bearer ${tokenResult.token}"
+
+            RetrofitClient.api.syncUser(
+                token,
+                SyncUserPayload(
+                    name = name,
+                    surname = surname,
+                    displayName = "$name $surname",
+                    email = email.lowercase()
+                )
+            )
+
+            Log.d("RegisterActivity", "User synced successfully after registration")
+        } catch (e: Exception) {
+            Log.e("RegisterActivity", "Failed to sync user after registration", e)
         }
     }
 
@@ -109,11 +140,22 @@ class RegisterActivity : AppCompatActivity() {
                     val success = registerUseCase(name, surname, email, password)
 
                     if (success) {
-                        Toast.makeText(this@RegisterActivity, "Registration successful", Toast.LENGTH_SHORT).show()
+                        syncUserDataOnRegister(name, surname, email)
+
+                        Toast.makeText(
+                            this@RegisterActivity,
+                            "Registration successful",
+                            Toast.LENGTH_SHORT
+                        ).show()
+
                         startActivity(Intent(this@RegisterActivity, MainActivity::class.java))
                         finish()
                     } else {
-                        Toast.makeText(this@RegisterActivity, "Registration failed", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            this@RegisterActivity,
+                            "Registration failed",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 }
             }

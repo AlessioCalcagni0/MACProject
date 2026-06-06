@@ -13,7 +13,7 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.location.Location
-import android.os.Build
+import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -50,6 +50,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.FileOutputStream
 import java.util.Locale
 import kotlin.math.sqrt
 
@@ -89,9 +91,7 @@ class RunFragment : Fragment(), OnMapReadyCallback, SensorEventListener {
     private var seconds = 0
     private var totalDistance = 0f
     private var lastLocation: Location? = null
-    private var pendingLocation: Location? = null
     private var currentRunId: String? = null
-    private var currentFirebaseRunKey: String? = null
     
     private var goalType: Int = -1
     private var goalValueText: String = ""
@@ -102,45 +102,45 @@ class RunFragment : Fragment(), OnMapReadyCallback, SensorEventListener {
     private var accelerometer: Sensor? = null
     private var stepCount = 0
     private var lastStepTime = 0L
-    private val STEP_COOLDOWN = 350L // ms tra passi
-    private val ACCEL_THRESHOLD = 12.0 // Soglia per rilevare il passo (magnitudo accelerazione)
-    
+    private val STEP_COOLDOWN = 350L
+    private val ACCEL_THRESHOLD = 12.0
     private var userWeight = 70.0
+
+    private val SENSOR_TAG = "RunStepSensor"
 
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationCallback: LocationCallback
-    
     private lateinit var viewModel: RunViewModel
 
     private val timerRunnable = object : Runnable {
         override fun run() {
-            if (isRunning && !isPaused) {
-                seconds++
-                updateTimerText()
-            }
-            if (isRunning) {
-                handler.postDelayed(this, 1000)
-            }
+            if (isRunning && !isPaused) { seconds++; updateTimerText() }
+            if (isRunning) handler.postDelayed(this, 1000)
         }
     }
 
     private val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
-        val locationGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
-        if (locationGranted) {
-            prepareAndStartRun()
-        } else {
-            Toast.makeText(context, "Location permission required", Toast.LENGTH_LONG).show()
-        }
+        if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true) prepareAndStartRun()
+        else Toast.makeText(context, "Location permission required", Toast.LENGTH_LONG).show()
     }
 
-    private val cameraPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-        if (isGranted) openCamera()
-    }
+    private val requestCameraPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            if (isGranted) {
+                launchCamera()
+            } else {
+                Toast.makeText(
+                    context,
+                    "Camera permission is required to take photos",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
 
     private val takePhotoLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            (result.data?.extras?.get("data") as? Bitmap)?.let { uploadPhotoToFirebase(it) }
+            (result.data?.extras?.get("data") as? Bitmap)?.let { processCapturedPhoto(it) }
         }
     }
 
@@ -150,37 +150,21 @@ class RunFragment : Fragment(), OnMapReadyCallback, SensorEventListener {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        viewModel = ViewModelProvider(this, RunViewModelFactory())[RunViewModel::class.java]
+        viewModel = ViewModelProvider(requireActivity(), RunViewModelFactory(requireContext()))[RunViewModel::class.java]
         initViews(view)
-        
         sensorManager = requireContext().getSystemService(Context.SENSOR_SERVICE) as SensorManager
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
-
         mapView = view.findViewById(R.id.mapView); mapView.onCreate(savedInstanceState)
         mapView.getMapAsync(this)
-
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(res: LocationResult) {
                 for (loc in res.locations) if (isRunning && !isPaused) { 
-                    updateStats(loc)
-                    updateMapLocation(loc)
-                    sendLocationToBackend(loc)
+                    updateStats(loc); updateMapLocation(loc); currentRunId?.let { viewModel.sendLocation(it, loc.latitude, loc.longitude) }
                 }
             }
         }
         fetchUserWeight()
-    }
-
-    private fun fetchUserWeight() {
-        val user = FirebaseAuth.getInstance().currentUser ?: return
-        lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                val users = RetrofitClient.api.searchUsers(user.uid)
-                val me = users.find { it.id == user.uid }
-                withContext(Dispatchers.Main) { userWeight = me?.weight?.toDouble() ?: 70.0 }
-            } catch (e: Exception) { withContext(Dispatchers.Main) { userWeight = 70.0 } }
-        }
     }
 
     private fun initViews(view: View) {
@@ -199,97 +183,174 @@ class RunFragment : Fragment(), OnMapReadyCallback, SensorEventListener {
         btnStartRun.setOnClickListener { checkPermissionsAndStart() }
         btnPauseRun.setOnClickListener { togglePause() }
         btnStopRun.setOnClickListener { confirmStopRun() }
-        btnTakePhoto.setOnClickListener { checkCameraPermissionAndOpen() }
-        setupPickersBase()
+        btnTakePhoto.setOnClickListener { openCamera() }
+        pickerValueMain.minValue = 0; pickerValueSub.minValue = 0 
     }
 
-    private fun checkCameraPermissionAndOpen() {
-        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) openCamera()
-        else cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+    private fun confirmStopRun() {
+        AlertDialog.Builder(requireContext())
+            .setTitle("End Run")
+            .setMessage("Are you sure you want to finish?")
+            .setPositiveButton("Finish") { _, _ -> captureMapAndStop() }
+            .setNegativeButton("Keep running", null)
+            .show()
     }
 
-    private fun togglePause() {
-        isPaused = !isPaused
-        if (isPaused) {
-            btnPauseRun.text = "RESUME"; btnPauseRun.setBackgroundColor(Color.parseColor("#4CAF50"))
-            sensorManager.unregisterListener(this)
-        } else {
-            btnPauseRun.text = "PAUSE"; btnPauseRun.setBackgroundColor(Color.parseColor("#FF9800"))
-            lastLocation = null; registerStepSensors()
+    private fun captureMapAndStop() {
+        if (!isRunning) return
+
+        btnStopRun.isEnabled = false
+        Log.d("RunFragment", "captureMapAndStop: starting finalize process")
+
+        var isFinalized = false
+        lateinit var failsafeRunnable: Runnable
+
+        val finalizeAction = {
+            if (!isFinalized) {
+                isFinalized = true
+                handler.removeCallbacks(failsafeRunnable)
+                Log.d("RunFragment", "Finalizing run UI now")
+                stopRun()
+            }
+        }
+
+        failsafeRunnable = Runnable {
+            Log.w("RunFragment", "Map snapshot timeout, finalizing without snapshot")
+            finalizeAction()
+        }
+
+        handler.postDelayed(failsafeRunnable, 5000)
+
+        val map = googleMap
+
+        if (map == null || pathPoints.isEmpty()) {
+            finalizeAction()
+            return
+        }
+
+        try {
+            val boundsBuilder = LatLngBounds.Builder()
+            pathPoints.forEach { boundsBuilder.include(it) }
+
+            val bounds = try {
+                boundsBuilder.build()
+            } catch (e: Exception) {
+                null
+            }
+
+            if (bounds != null) {
+                if (bounds.northeast == bounds.southwest) {
+                    map.moveCamera(CameraUpdateFactory.newLatLngZoom(bounds.northeast, 16f))
+                } else {
+                    map.moveCamera(CameraUpdateFactory.newLatLngBounds(bounds, 100))
+                }
+            }
+
+            handler.postDelayed({
+                if (!isFinalized) {
+                    try {
+                        map.snapshot { bitmap ->
+                            if (bitmap != null) {
+                                saveMapSnapshotLocally(bitmap) {
+                                    finalizeAction()
+                                }
+                            } else {
+                                finalizeAction()
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e("RunFragment", "Snapshot error", e)
+                        finalizeAction()
+                    }
+                }
+            }, 500)
+
+        } catch (e: Exception) {
+            Log.e("RunFragment", "Map prep error", e)
+            finalizeAction()
         }
     }
 
-    override fun onSensorChanged(event: SensorEvent?) {
-        if (event == null || !isRunning || isPaused) return
-        
-        if (event.sensor.type == Sensor.TYPE_ACCELEROMETER) {
-            val x = event.values[0]
-            val y = event.values[1]
-            val z = event.values[2]
-            
-            // Calcolo della magnitudo dell'accelerazione (include gravità ~9.8)
-            val magnitude = sqrt((x * x + y * y + z * z).toDouble())
-            
-            // Log dell'accelerometro per il debug
-            Log.d("RunFragment", "Accel Magnitude: $magnitude (Threshold: $ACCEL_THRESHOLD)")
-            
-            val currentTime = System.currentTimeMillis()
-            // Se la magnitudo supera la soglia e è passato abbastanza tempo dall'ultimo passo
-            if (magnitude > ACCEL_THRESHOLD && (currentTime - lastStepTime) > STEP_COOLDOWN) {
-                stepCount++
-                Log.d("RunFragment", "Step Detected! Total steps: $stepCount")
-                lastStepTime = currentTime
-                activity?.runOnUiThread { 
-                    tvSteps.text = stepCount.toString() 
+    private fun saveMapSnapshotLocally(bitmap: Bitmap, onSaved: () -> Unit) {
+        val fileName = "map_snap_${System.currentTimeMillis()}.jpg"
+        val file = File(requireContext().filesDir, fileName)
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val out = FileOutputStream(file)
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
+                out.close()
+
+                withContext(Dispatchers.Main) {
+                    capturedPhotos.add(0, file.absolutePath)
+                    Log.d("RunFragment", "Map snapshot saved locally: ${file.absolutePath}")
+                    onSaved()
+                }
+            } catch (e: Exception) {
+                Log.e("RunFragment", "Error saving map snapshot file", e)
+                withContext(Dispatchers.Main) {
+                    onSaved()
                 }
             }
         }
     }
 
-    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
-
-    private fun confirmStopRun() {
-        AlertDialog.Builder(requireContext()).setTitle("End Run").setMessage("Are you sure?").setPositiveButton("Yes") { _, _ -> captureMapAndStop() }.setNegativeButton("No", null).show()
+    private fun stopRun() {
+        if (!isRunning) return
+        isRunning = false
+        Log.d(
+            SENSOR_TAG,
+            "RUN FINISHED -> final stepCount=$stepCount, durationSeconds=$seconds, distanceMeters=$totalDistance, runId=$currentRunId"
+        )
+        
+        sensorManager.unregisterListener(this)
+        handler.removeCallbacks(timerRunnable)
+        fusedLocationClient.removeLocationUpdates(locationCallback)
+        
+        val distKm = totalDistance / 1000.0
+        val finalSpeed = if (seconds > 0) (distKm / (seconds / 3600.0)) else 0.0
+        val cal = (0.9 * userWeight * distKm).toInt()
+        val achieved = when(goalType) { 
+            R.id.rbTime -> seconds >= goalTargetValue
+            R.id.rbDistance -> distKm >= goalTargetValue
+            R.id.rbCalories -> cal >= goalTargetValue
+            else -> false 
+        }
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: "unknown"
+        val stats = listOf(ParticipantLiveStats(uid, finalSpeed, cal, distKm))
+        
+        // Pass a copy of the list to avoid concurrent modification
+        val photosCopy = ArrayList(capturedPhotos)
+        currentRunId?.let { 
+            viewModel.endRun(it, uid, distKm, finalSpeed, cal, achieved, seconds, stepCount, goalValueText, photosCopy, stats) 
+        }
+        
+        // Navigation is immediate now
+        val fragment = GroupRunSummaryFragment.newInstance(stats, photosCopy, emptyMap(), seconds, false, runId = currentRunId, goalAchieved = achieved, goalTarget = goalValueText, pathPoints = pathPoints)
+        (activity as? MainActivity)?.navigateToFragment(fragment, "SUMMARY", "Run Summary")
+        
+        layoutSetupGoal.visibility = View.VISIBLE
+        layoutRunningStats.visibility = View.GONE
+        btnStopRun.isEnabled = true
     }
 
-    private fun captureMapAndStop() {
-        if (googleMap == null || pathPoints.isEmpty()) { stopRun(); return }
-        btnStopRun.isEnabled = false
-        val boundsBuilder = LatLngBounds.Builder()
-        pathPoints.forEach { boundsBuilder.include(it) }
-        val bounds = boundsBuilder.build()
-        googleMap?.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 100))
-        handler.postDelayed({ googleMap?.snapshot { b -> if (b != null) uploadMapSnapshot(b) { stopRun() } else stopRun() } }, 800)
-    }
-
-    private fun uploadMapSnapshot(bitmap: Bitmap, onComplete: () -> Unit) {
-        val storageRef = FirebaseStorage.getInstance().reference.child("runs/${FirebaseAuth.getInstance().currentUser?.uid}/map_${System.currentTimeMillis()}.jpg")
-        val baos = ByteArrayOutputStream(); bitmap.compress(Bitmap.CompressFormat.JPEG, 70, baos)
-        storageRef.putBytes(baos.toByteArray()).addOnSuccessListener { it.metadata?.reference?.downloadUrl?.addOnSuccessListener { uri -> capturedPhotos.add(uri.toString()); onComplete() } ?: onComplete() }.addOnFailureListener { onComplete() }
-    }
-
-    private fun openCamera() { takePhotoLauncher.launch(Intent(MediaStore.ACTION_IMAGE_CAPTURE)) }
-
-    private fun uploadPhotoToFirebase(bitmap: Bitmap) {
-        val storageRef = FirebaseStorage.getInstance().reference.child("runs/${FirebaseAuth.getInstance().currentUser?.uid}/${System.currentTimeMillis()}.jpg")
-        val baos = ByteArrayOutputStream(); bitmap.compress(Bitmap.CompressFormat.JPEG, 70, baos)
-        storageRef.putBytes(baos.toByteArray()).addOnSuccessListener { it.metadata?.reference?.downloadUrl?.addOnSuccessListener { uri -> capturedPhotos.add(uri.toString()); photosAdapter.notifyDataSetChanged() } }
+    private fun fetchUserWeight() {
+        val user = FirebaseAuth.getInstance().currentUser ?: return
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val response = RetrofitClient.api.syncUser("Bearer fake", com.example.myapplication.data.SyncUserPayload()) 
+                // Using searchUsers or sync with token is better, but here we just want weight
+                withContext(Dispatchers.Main) { userWeight = response.weight ?: 70.0 }
+            } catch (e: Exception) { 
+                withContext(Dispatchers.Main) { userWeight = 70.0 } 
+            }
+        }
     }
 
     private fun checkPermissionsAndStart() {
-        if (rgGoalType.checkedRadioButtonId == -1) { Toast.makeText(context, "Select goal", Toast.LENGTH_SHORT).show(); return }
-        if (pickerValueMain.value == 0 && (pickerValueSub.visibility == View.GONE || pickerValueSub.value == 0)) { Toast.makeText(context, "Set value", Toast.LENGTH_SHORT).show(); return }
-        
         val permissions = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
-        val missingPermissions = permissions.filter {
-            ContextCompat.checkSelfPermission(requireContext(), it) != PackageManager.PERMISSION_GRANTED
-        }
-
-        if (missingPermissions.isEmpty()) {
-            prepareAndStartRun()
-        } else {
-            requestPermissionLauncher.launch(missingPermissions.toTypedArray())
-        }
+        if (permissions.all { ContextCompat.checkSelfPermission(requireContext(), it) == PackageManager.PERMISSION_GRANTED }) prepareAndStartRun()
+        else requestPermissionLauncher.launch(permissions)
     }
 
     private fun prepareAndStartRun() {
@@ -300,60 +361,195 @@ class RunFragment : Fragment(), OnMapReadyCallback, SensorEventListener {
             R.id.rbCalories -> "${pickerValueMain.value} kcal".also { goalTargetValue = pickerValueMain.value.toDouble() }
             else -> "-".also { goalTargetValue = 0.0 }
         }
-        viewModel.startRun(FirebaseAuth.getInstance().currentUser?.uid ?: "unknown") { id -> if (id != null) { currentRunId = id; startRun() } else Toast.makeText(context, "Error", Toast.LENGTH_SHORT).show() }
-    }
-
-    private fun startRun() {
-        isRunning = true; isPaused = false; seconds = 0; totalDistance = 0f; lastLocation = null; stepCount = 0; pathPoints.clear(); googleMap?.clear(); userMarker = null; pathPolyline = null; capturedPhotos.clear(); photosAdapter.notifyDataSetChanged(); tvSteps.text = "0"; tvCurrentGoalDisplay.text = goalValueText; layoutSetupGoal.visibility = View.GONE; layoutRunningStats.visibility = View.VISIBLE; btnStopRun.isEnabled = true
-        handler.post(timerRunnable); startLocationUpdates(); registerStepSensors()
-    }
-
-    private fun registerStepSensors() {
-        sensorManager.unregisterListener(this) 
-        // Usiamo solo l'accelerometro come richiesto
-        accelerometer?.let { 
-            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME) 
+        viewModel.startRun(FirebaseAuth.getInstance().currentUser?.uid ?: "unknown") { id -> 
+            currentRunId = id ?: ("off_" + System.currentTimeMillis())
+            startRun()
+            if (id == null) Toast.makeText(context, "Running offline - session will sync later", Toast.LENGTH_SHORT).show()
         }
     }
 
-    private fun stopRun() {
-        isRunning = false; sensorManager.unregisterListener(this); handler.removeCallbacks(timerRunnable); fusedLocationClient.removeLocationUpdates(locationCallback)
-        val distKm = totalDistance / 1000.0
-        val finalSpeed = if (seconds > 0) (distKm / (seconds / 3600.0)) else 0.0
-        val cal = (0.9 * userWeight * distKm).toInt()
-        val achieved = when(goalType) { R.id.rbTime -> seconds >= goalTargetValue; R.id.rbDistance -> distKm >= goalTargetValue; R.id.rbCalories -> cal >= goalTargetValue; else -> false }
-        currentRunId?.let { viewModel.endRun(it, distKm) }
-        saveSingleRunToHistory(distKm, finalSpeed, cal, achieved)
+    private fun startRun() {
+        isRunning = true
+        isPaused = false
+
+        seconds = 0
+        totalDistance = 0f
+        lastLocation = null
+
+        // RESET PASSI A OGNI NUOVA CORSA
+        stepCount = 0
+        lastStepTime = 0L
+
+        pathPoints.clear()
+        googleMap?.clear()
+        userMarker = null
+        pathPolyline = null
+
+        capturedPhotos.clear()
+        photosAdapter.notifyDataSetChanged()
+
+        tvSteps.text = "0"
+        tvDistance.text = "0.00 km"
+        tvSpeed.text = "0.0 km/h"
+        tvCalories.text = "0 kcal"
+        tvDuration.text = "00:00:00"
+        tvCurrentGoalDisplay.text = goalValueText
+
+        Log.d(
+            SENSOR_TAG,
+            "NEW SINGLE RUN STARTED -> steps reset to 0, lastStepTime reset, runId=$currentRunId"
+        )
+
+        layoutSetupGoal.visibility = View.GONE
+        layoutRunningStats.visibility = View.VISIBLE
+
+        handler.removeCallbacks(timerRunnable)
+        handler.post(timerRunnable)
+
+        startLocationUpdates()
+        registerStepSensors()
     }
 
-    private fun saveSingleRunToHistory(dist: Double, speed: Double, cal: Int, achieved: Boolean) {
-        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        viewModel.saveRunToHistory(uid, dist, speed, cal, achieved, seconds, stepCount, goalValueText, capturedPhotos, listOf(ParticipantLiveStats(uid, speed, cal, dist))) { k -> currentFirebaseRunKey = k; showSummary(dist, speed, cal, achieved) }
+    private fun registerStepSensors() {
+        if (accelerometer == null) {
+            Log.e(SENSOR_TAG, "Accelerometer sensor NOT available on this device")
+            return
+        }
+
+        val registered = sensorManager.registerListener(
+            this,
+            accelerometer,
+            SensorManager.SENSOR_DELAY_GAME
+        )
+
+        Log.d(
+            SENSOR_TAG,
+            "registerStepSensors -> registered=$registered, sensorName=${accelerometer?.name}, sensorType=${accelerometer?.type}"
+        )
     }
 
-    private fun showSummary(dist: Double, speed: Double, cal: Int, achieved: Boolean) {
-        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-        val fragment = GroupRunSummaryFragment.newInstance(listOf(ParticipantLiveStats(uid, speed, cal, dist)), capturedPhotos, emptyMap(), seconds, false, runId = currentFirebaseRunKey, goalAchieved = achieved, goalTarget = goalValueText)
-        (activity as? MainActivity)?.navigateToFragment(fragment, "SUMMARY", "Run Summary")
-        layoutSetupGoal.visibility = View.VISIBLE; layoutRunningStats.visibility = View.GONE
+    private fun openCamera() {
+        if (
+            ContextCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.CAMERA
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            launchCamera()
+        } else {
+            requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
     }
+
+    private fun launchCamera() {
+        takePhotoLauncher.launch(Intent(MediaStore.ACTION_IMAGE_CAPTURE))
+    }
+    private fun processCapturedPhoto(bitmap: Bitmap) {
+        val fileName = "run_photo_${System.currentTimeMillis()}.jpg"
+        val file = File(requireContext().filesDir, fileName)
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val out = FileOutputStream(file)
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+                out.close()
+                withContext(Dispatchers.Main) {
+                    capturedPhotos.add(file.absolutePath)
+                    photosAdapter.notifyDataSetChanged()
+                    
+                    // Background upload attempt
+                    val storageRef = FirebaseStorage.getInstance().reference.child("runs/${FirebaseAuth.getInstance().currentUser?.uid}/$fileName")
+                    storageRef.putFile(Uri.fromFile(file))
+                }
+            } catch (e: Exception) { Log.e("RunFragment", "Error saving photo", e) }
+        }
+    }
+
+    private fun togglePause() {
+        isPaused = !isPaused
+
+        if (isPaused) {
+            btnPauseRun.text = "RESUME"
+            btnPauseRun.setBackgroundColor(Color.parseColor("#4CAF50"))
+
+            sensorManager.unregisterListener(this)
+
+            Log.d(
+                SENSOR_TAG,
+                "RUN PAUSED -> sensors unregistered, current steps=$stepCount"
+            )
+        } else {
+            btnPauseRun.text = "PAUSE"
+            btnPauseRun.setBackgroundColor(Color.parseColor("#FF9800"))
+
+            lastLocation = null
+            registerStepSensors()
+
+            Log.d(
+                SENSOR_TAG,
+                "RUN RESUMED -> sensors registered again, current steps=$stepCount"
+            )
+        }
+    }
+
+    override fun onSensorChanged(event: SensorEvent?) {
+        if (event == null) return
+
+        if (!isRunning || isPaused) {
+            return
+        }
+
+        if (event.sensor.type != Sensor.TYPE_ACCELEROMETER) {
+            return
+        }
+
+        val x = event.values[0]
+        val y = event.values[1]
+        val z = event.values[2]
+
+        val magnitude = sqrt(
+            (x * x + y * y + z * z).toDouble()
+        )
+
+        val now = System.currentTimeMillis()
+        val deltaFromLastStep = now - lastStepTime
+
+        // Log non troppo frequente: circa ogni 1 secondo
+        if (now % 1000 < 30) {
+            Log.d(
+                SENSOR_TAG,
+                "ACCEL raw -> x=$x, y=$y, z=$z, magnitude=$magnitude, threshold=$ACCEL_THRESHOLD, steps=$stepCount"
+            )
+        }
+
+        if (magnitude > ACCEL_THRESHOLD && deltaFromLastStep > STEP_COOLDOWN) {
+            stepCount++
+            lastStepTime = now
+
+            Log.d(
+                SENSOR_TAG,
+                "STEP DETECTED -> stepCount=$stepCount, magnitude=$magnitude, deltaMs=$deltaFromLastStep, runId=$currentRunId"
+            )
+
+            activity?.runOnUiThread {
+                tvSteps.text = stepCount.toString()
+            }
+        }
+    }
+
+    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
 
     private fun updateMapLocation(loc: Location) {
-        val map = googleMap ?: return
-        val pos = LatLng(loc.latitude, loc.longitude)
-        pathPoints.add(pos)
-        if (pathPolyline == null) pathPolyline = map.addPolyline(PolylineOptions().addAll(pathPoints).color(Color.MAGENTA).width(12f))
+        val pos = LatLng(loc.latitude, loc.longitude); pathPoints.add(pos)
+        if (pathPolyline == null) pathPolyline = googleMap?.addPolyline(PolylineOptions().addAll(pathPoints).color(Color.MAGENTA).width(12f))
         else pathPolyline?.points = pathPoints
         if (userMarker == null) {
             val dr = ContextCompat.getDrawable(requireContext(), R.drawable.ic_navigation_arrow)!!
             val bm = Bitmap.createBitmap(dr.intrinsicWidth, dr.intrinsicHeight, Bitmap.Config.ARGB_8888)
             val cv = Canvas(bm); dr.setBounds(0, 0, cv.width, cv.height); dr.setTint(Color.BLUE); dr.draw(cv)
-            userMarker = map.addMarker(MarkerOptions().position(pos).rotation(loc.bearing).anchor(0.5f, 0.5f).flat(true).icon(BitmapDescriptorFactory.fromBitmap(bm)))
-            map.moveCamera(CameraUpdateFactory.newLatLngZoom(pos, 17f))
-        } else { userMarker?.position = pos; userMarker?.rotation = loc.bearing; map.animateCamera(CameraUpdateFactory.newLatLng(pos)) }
+            userMarker = googleMap?.addMarker(MarkerOptions().position(pos).rotation(loc.bearing).anchor(0.5f, 0.5f).flat(true).icon(BitmapDescriptorFactory.fromBitmap(bm)))
+            googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(pos, 17f))
+        } else { userMarker?.position = pos; userMarker?.rotation = loc.bearing; googleMap?.animateCamera(CameraUpdateFactory.newLatLng(pos)) }
     }
-
-    private fun sendLocationToBackend(loc: Location) { currentRunId?.let { viewModel.sendLocation(it, loc.latitude, loc.longitude) } }
 
     private fun updateStats(loc: Location) {
         lastLocation?.let { 
@@ -383,12 +579,7 @@ class RunFragment : Fragment(), OnMapReadyCallback, SensorEventListener {
         try { fusedLocationClient.requestLocationUpdates(req, locationCallback, Looper.getMainLooper()) } catch (e: SecurityException) {}
     }
 
-    private fun setupPickersBase() { 
-        pickerValueMain.minValue = 0; pickerValueSub.minValue = 0 
-    }
-
     private fun updatePickerConfig(id: Int) {
-        goalType = id
         tvSeparator.visibility = if (id == R.id.rbCalories) View.GONE else View.VISIBLE
         pickerValueSub.visibility = if (id == R.id.rbCalories) View.GONE else View.VISIBLE
         when(id) {
@@ -399,24 +590,8 @@ class RunFragment : Fragment(), OnMapReadyCallback, SensorEventListener {
     }
 
     override fun onMapReady(map: GoogleMap) { googleMap = map; googleMap?.uiSettings?.isZoomControlsEnabled = true }
-    
-    override fun onResume() { 
-        super.onResume()
-        mapView.onResume()
-        if (isRunning && !isPaused) registerStepSensors()
-    }
-    
-    override fun onPause() { 
-        super.onPause()
-        mapView.onPause()
-        sensorManager.unregisterListener(this)
-    }
-    
-    override fun onDestroy() { 
-        super.onDestroy()
-        mapView.onDestroy()
-        sensorManager.unregisterListener(this)
-    }
-
+    override fun onResume() { super.onResume(); mapView.onResume(); if (isRunning && !isPaused) registerStepSensors() }
+    override fun onPause() { super.onPause(); mapView.onPause(); sensorManager.unregisterListener(this) }
+    override fun onDestroy() { super.onDestroy(); mapView.onDestroy(); sensorManager.unregisterListener(this) }
     override fun onLowMemory() { super.onLowMemory(); mapView.onLowMemory() }
 }

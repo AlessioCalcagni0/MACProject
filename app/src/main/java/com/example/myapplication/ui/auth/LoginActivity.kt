@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.myapplication.R
 import com.example.myapplication.data.RetrofitClient
+import com.example.myapplication.data.SyncUserPayload
 import com.example.myapplication.data.auth.AuthRepositoryImpl
 import com.example.myapplication.domain.auth.LoginUseCase
 import com.example.myapplication.ui.home.MainActivity
@@ -90,17 +91,25 @@ class LoginActivity : AppCompatActivity() {
             }
         }
     }
-    
+
     private suspend fun syncUserDataOnLogin() {
         val user = FirebaseAuth.getInstance().currentUser ?: return
+
         try {
             val tokenResult = com.google.android.gms.tasks.Tasks.await(user.getIdToken(true))
             val token = "Bearer ${tokenResult.token}"
-            // Call syncUser with empty map to force backend to return data (including weight)
-            RetrofitClient.api.syncUser(token, emptyMap<String, Any>())
-            Log.d("LoginActivity", "User data synced successfully on login")
+
+            RetrofitClient.api.syncUser(
+                token,
+                SyncUserPayload(
+                    displayName = user.displayName,
+                    email = user.email?.lowercase()
+                )
+            )
+
+            Log.d("LoginActivity", "User synced successfully on login")
         } catch (e: Exception) {
-            Log.e("LoginActivity", "Failed to sync user data on login", e)
+            Log.e("LoginActivity", "Failed to sync user on login", e)
         }
     }
 }

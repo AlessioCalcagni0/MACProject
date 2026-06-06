@@ -10,39 +10,43 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:padding="12dp"
-        android:gravity="center_vertical">
+        android:padding="12dp">
 
         <ImageView
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:src="@drawable/ic_profile"
-            app:tint="#6200EE" />
+            android:id="@+id/ivFriendPhoto"
+            android:layout_width="46dp"
+            android:layout_height="46dp"
+            android:background="@drawable/bg_circle_light"
+            android:contentDescription="Friend profile photo"
+            android:padding="4dp"
+            android:scaleType="centerCrop"
+            android:src="@drawable/ic_profile" />
 
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
             android:layout_weight="1"
-            android:orientation="vertical"
-            android:layout_marginStart="12dp">
+            android:orientation="vertical">
 
             <TextView
                 android:id="@+id/tvFriendName"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Friend Name"
+                android:textColor="#333333"
                 android:textSize="16sp"
-                android:textStyle="bold"
-                android:textColor="#333333" />
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/tvFriendEmail"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="friend@example.com"
-                android:textSize="12sp"
-                android:textColor="#777777" />
+                android:textColor="#777777"
+                android:textSize="12sp" />
         </LinearLayout>
 
     </LinearLayout>

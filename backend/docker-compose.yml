@@ -1,11 +1,11 @@
 services:
   db:
-    image: postgres:16
+    image: postgres:18
     container_name: my_postgres
     restart: always
     environment:
-      POSTGRES_USER: myuser
-      POSTGRES_PASSWORD: mypassword
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: postgres
       POSTGRES_DB: myappdb
     ports:
       - "5432:5432"
@@ -25,7 +25,7 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://myuser:mypassword@db:5432/myappdb
+      DATABASE_URL: postgresql://admin:postgres@/myappdb?host=/cloudsql/maccproject-9de7e:europe-west1:postgres-maccproject
       FIREBASE_CREDENTIALS_PATH: /app/secrets/maccproject-9de7e-firebase-adminsdk-fbsvc-e89d93806d.json
     ports:
       - "8000:8000"

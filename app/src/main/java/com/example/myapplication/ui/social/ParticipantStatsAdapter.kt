@@ -10,9 +10,29 @@ import com.example.myapplication.R
 import com.google.firebase.auth.FirebaseAuth
 import java.util.Locale
 
+object ParticipantColorProvider {
+    private val colors = listOf(
+        Color.parseColor("#2196F3"), // blu
+        Color.parseColor("#F44336"), // rosso
+        Color.parseColor("#4CAF50"), // verde
+        Color.parseColor("#9C27B0")  // viola
+    )
+
+    fun getColorForUser(userId: String, memberIds: List<String>): Int {
+        val index = memberIds.indexOf(userId)
+
+        return if (index >= 0) {
+            colors[index % colors.size]
+        } else {
+            colors[0]
+        }
+    }
+}
+
 class ParticipantStatsAdapter(
     private var stats: List<ParticipantLiveStats>,
-    private var namesMap: Map<String, String>
+    private var namesMap: Map<String, String>,
+    private var memberIds: List<String> = emptyList()
 ) : RecyclerView.Adapter<ParticipantStatsAdapter.ViewHolder>() {
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -24,7 +44,7 @@ class ParticipantStatsAdapter(
     }
 
     fun updateData(newData: List<ParticipantLiveStats>) {
-        stats = newData
+        stats = sortByMemberOrder(newData)
         notifyDataSetChanged()
     }
 
@@ -33,8 +53,26 @@ class ParticipantStatsAdapter(
         notifyDataSetChanged()
     }
 
+    fun updateMemberIds(newMemberIds: List<String>) {
+        memberIds = newMemberIds
+        stats = sortByMemberOrder(stats)
+        notifyDataSetChanged()
+    }
+
+    private fun sortByMemberOrder(list: List<ParticipantLiveStats>): List<ParticipantLiveStats> {
+        return list.sortedWith(
+            compareBy<ParticipantLiveStats> {
+                val index = memberIds.indexOf(it.userId)
+                if (index >= 0) index else Int.MAX_VALUE
+            }.thenBy { it.userId }
+        )
+    }
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        return ViewHolder(LayoutInflater.from(parent.context).inflate(R.layout.item_participant_stats, parent, false))
+        return ViewHolder(
+            LayoutInflater.from(parent.context)
+                .inflate(R.layout.item_participant_stats, parent, false)
+        )
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
@@ -48,14 +86,20 @@ class ParticipantStatsAdapter(
         }
 
         holder.tvName.text = displayName
+
         holder.tvDistance.text =
             String.format(Locale.getDefault(), "Distance: %.2f km", s.distance)
+
         holder.tvCalories.text =
             String.format(Locale.getDefault(), "Calories: %d kcal", s.calories)
+
         holder.tvSpeed.text =
             String.format(Locale.getDefault(), "Average speed: %.1f km/h", s.speed)
 
-        holder.indicator.setBackgroundColor(if (isMe) Color.BLUE else Color.RED)
+        holder.indicator.setBackgroundColor(
+            ParticipantColorProvider.getColorForUser(s.userId, memberIds)
+        )
     }
+
     override fun getItemCount() = stats.size
 }

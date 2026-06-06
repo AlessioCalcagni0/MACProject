@@ -27,12 +27,12 @@ class FriendRequestsAdapter(
 
     override fun onBindViewHolder(holder: RequestViewHolder, position: Int) {
         val request = requests[position]
-        // Mostra il display_name se presente, altrimenti l'email
-        val senderInfo = request.fromUser.display_name ?: request.fromUser.email
+        // Mostra il displayName se presente, altrimenti l'email
+        val senderInfo = request.fromUser.displayName ?: request.fromUser.email
         holder.tvEmail.text = senderInfo
         
-        holder.btnAccept.setOnClickListener { onResponse(request.id, "accepted", request.fromUser.id) }
-        holder.btnReject.setOnClickListener { onResponse(request.id, "rejected", request.fromUser.id) }
+        holder.btnAccept.setOnClickListener { onResponse(request.id, "accepted", request.fromUser.firebaseUid) }
+        holder.btnReject.setOnClickListener { onResponse(request.id, "rejected", request.fromUser.firebaseUid) }
     }
 
     override fun getItemCount() = requests.size

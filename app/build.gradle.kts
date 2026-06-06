@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.google.gms.google.services)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -49,17 +50,14 @@ dependencies {
     implementation(libs.androidx.credentials.play.services.auth)
     implementation(libs.googleid)
     
-    // Google Play Services
     implementation(libs.play.services.location)
     implementation(libs.play.services.maps)
     
-    // Retrofit
     implementation(libs.retrofit)
     implementation(libs.retrofit.gson)
     
-    // Glide per le immagini
     implementation(libs.glide)
-    annotationProcessor(libs.glide.compiler)
+    ksp(libs.glide.compiler)
     
     implementation("com.android.volley:volley:1.2.1")
     implementation("androidx.appcompat:appcompat:1.7.1")
@@ -72,11 +70,15 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
 
+    // Room
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+
+    // WorkManager
+    implementation(libs.androidx.work.runtime.ktx)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
-    debugImplementation(libs.androidx.compose.ui.tooling)
-    debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

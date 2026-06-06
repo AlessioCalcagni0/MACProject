@@ -80,10 +80,13 @@ interface ApiService {
         @Path("userId") userId: String
     ): SimpleStatusResponse
 
-    // --- GESTIONE AMICI ---
+    // --- GESTIONE UTENTI E AMICI ---
 
     @POST("users/sync")
-    suspend fun syncUser(@Header("Authorization") token: String, @Body userData: Map<String, @JvmSuppressWildcards Any>): UserResponse
+    suspend fun syncUser(
+        @Header("Authorization") token: String, 
+        @Body userData: SyncUserPayload
+    ): UserResponse
 
     @GET("users/search")
     suspend fun searchUsers(@Query("query") query: String): List<UserResponse>
@@ -104,19 +107,31 @@ interface ApiService {
     suspend fun getFriends(@Query("user_id") userId: String): List<UserResponse>
 }
 
+data class SyncUserPayload(
+    val name: String? = null,
+    val surname: String? = null,
+    @SerializedName("display_name") val displayName: String? = null,
+    val email: String? = null,
+    val weight: Double? = null
+)
+
+data class UserResponse(
+    @SerializedName("id") val idInt: Int? = null,
+    @SerializedName("firebase_uid") val firebaseUid: String = "",
+    val name: String? = null,
+    val surname: String? = null,
+    val email: String? = null,
+    @SerializedName("display_name") val displayName: String? = null,
+    val weight: Double? = null,
+    val provider: String? = null
+) {
+    val id: String get() = firebaseUid
+}
+
 data class RunStartResponse(val run_id: String, val status: String)
-
 data class SimpleStatusResponse(val status: String)
-
-data class GroupResponse(
-    @SerializedName("group_id") val id: String
-)
-
-data class GroupStartRunResponse(
-    val group_id: String,
-    val group_name: String,
-    val members: List<String>
-)
+data class GroupResponse(@SerializedName("group_id") val id: String)
+data class GroupStartRunResponse(val group_id: String, val group_name: String, val members: List<String>)
 
 data class GroupDetailedResponse(
     val id: String?,
@@ -129,32 +144,7 @@ data class GroupDetailedResponse(
     val realId: String get() = id ?: groupId ?: ""
 }
 
-data class GroupInviteResponse(
-    val id: String,
-    val group_name: String?,
-    @SerializedName("invited_by") val invitedBy: UserResponse?
-)
-
-data class GroupInviteActionResponse(
-    val status: String,
-    val invite_id: String?
-)
-
-data class UserResponse(
-    @SerializedName("firebase_uid") val id: String,
-    val email: String,
-    val display_name: String?,
-    val weight: Float? = null
-)
-
-data class FriendRequestResponse(
-    val id: String,
-    @SerializedName("from_user") val fromUser: UserResponse,
-    val status: String
-)
-
-data class FriendRequestActionResponse(
-    val status: String,
-    @SerializedName("request_id") val requestId: String,
-    @SerializedName("to_user_id") val toUserId: String? = null
-)
+data class GroupInviteResponse(val id: String, val group_name: String?, @SerializedName("invited_by") val invitedBy: UserResponse?)
+data class GroupInviteActionResponse(val status: String, val invite_id: String?)
+data class FriendRequestResponse(val id: String, @SerializedName("from_user") val fromUser: UserResponse, val status: String)
+data class FriendRequestActionResponse(val status: String, @SerializedName("request_id") val requestId: String, @SerializedName("to_user_id") val toUserId: String? = null)
