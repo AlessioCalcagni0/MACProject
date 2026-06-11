@@ -15,7 +15,7 @@ class FriendsAdapter(private val friends: List<UserResponse>) :
     RecyclerView.Adapter<FriendsAdapter.FriendViewHolder>() {
 
     private val databaseUrl =
-        "https://maccproject-9de7e-default-rtdb.europe-west1.firebasedatabase.app"
+        "https://maccproject-7f15c-default-rtdb.europe-west1.firebasedatabase.app"
 
     class FriendViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val ivFriendPhoto: ImageView = view.findViewById(R.id.ivFriendPhoto)

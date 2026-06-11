@@ -37,7 +37,7 @@ class ProfileFragment : Fragment() {
     private lateinit var tvEmail: TextView
 
     private val databaseUrl =
-        "https://maccproject-9de7e-default-rtdb.europe-west1.firebasedatabase.app"
+        "https://maccproject-7f15c-default-rtdb.europe-west1.firebasedatabase.app"
 
     private val pickImageLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->

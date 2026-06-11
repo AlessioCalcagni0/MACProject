@@ -44,7 +44,7 @@ class GroupLobbyFragment : Fragment() {
     private var isOrganizer: Boolean = false
     private var hasNavigatedToRun = false
 
-    private val DB_URL = "https://maccproject-9de7e-default-rtdb.europe-west1.firebasedatabase.app"
+    private val DB_URL = "https://maccproject-7f15c-default-rtdb.europe-west1.firebasedatabase.app"
 
     companion object {
         private const val ARG_GROUP_NAME = "group_name"

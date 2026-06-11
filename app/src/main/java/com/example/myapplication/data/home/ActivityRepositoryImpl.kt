@@ -20,7 +20,7 @@ class ActivityRepositoryImpl(
 ) : ActivityRepository {
 
     private val database =
-        FirebaseDatabase.getInstance("https://maccproject-9de7e-default-rtdb.europe-west1.firebasedatabase.app").reference
+        FirebaseDatabase.getInstance("https://maccproject-7f15c-default-rtdb.europe-west1.firebasedatabase.app").reference
 
     private val gson = Gson()
 

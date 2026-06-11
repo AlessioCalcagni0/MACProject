@@ -148,7 +148,7 @@ class GroupRunFragment : Fragment(), OnMapReadyCallback {
         userNamesMap.putAll(initialNames)
 
         database =
-            FirebaseDatabase.getInstance("https://maccproject-9de7e-default-rtdb.europe-west1.firebasedatabase.app").reference
+            FirebaseDatabase.getInstance("https://maccproject-7f15c-default-rtdb.europe-west1.firebasedatabase.app").reference
 
         lobbyRef = database.child("lobbies").child(groupId!!)
         statsRef = lobbyRef.child("live_stats")

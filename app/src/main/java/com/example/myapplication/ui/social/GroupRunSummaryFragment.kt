@@ -225,7 +225,7 @@ class GroupRunSummaryFragment : Fragment() {
         val rId = runId ?: return
 
         FirebaseDatabase
-            .getInstance("https://maccproject-9de7e-default-rtdb.europe-west1.firebasedatabase.app")
+            .getInstance("https://maccproject-7f15c-default-rtdb.europe-west1.firebasedatabase.app")
             .reference
             .child("users")
             .child(userId)

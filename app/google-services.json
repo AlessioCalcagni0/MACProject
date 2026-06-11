@@ -1,42 +1,33 @@
 {
   "project_info": {
-    "project_number": "135515541563",
-    "firebase_url": "https://maccproject-9de7e-default-rtdb.europe-west1.firebasedatabase.app",
-    "project_id": "maccproject-9de7e",
-    "storage_bucket": "maccproject-9de7e.firebasestorage.app"
+    "project_number": "1063189795623",
+    "project_id": "maccproject-7f15c",
+    "storage_bucket": "maccproject-7f15c.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:135515541563:android:f2840decd08a6396088c1e",
+        "mobilesdk_app_id": "1:1063189795623:android:9725c19f87e4da18c00f02",
         "android_client_info": {
           "package_name": "com.example.myapplication"
         }
       },
       "oauth_client": [
         {
-          "client_id": "135515541563-jk6he4apucg1q0d62rvsipcbphstdkqk.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.example.myapplication",
-            "certificate_hash": "eb70425e54ccd7f01201584cad9534448762525a"
-          }
-        },
-        {
-          "client_id": "135515541563-15j6rlfr09t6bso3t4n9df7lprqfe9is.apps.googleusercontent.com",
+          "client_id": "1063189795623-0khaab1up1mlj9ksvn0121v96eu8q78j.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyCXtiS7Ti19HTCNQMxaFy0rUyQ7VBaFTQg"
+          "current_key": "AIzaSyCgVZyXmmOwSaccDlNtETF83rcD6-p3eEk"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "135515541563-15j6rlfr09t6bso3t4n9df7lprqfe9is.apps.googleusercontent.com",
+              "client_id": "1063189795623-0khaab1up1mlj9ksvn0121v96eu8q78j.apps.googleusercontent.com",
               "client_type": 3
             }
           ]

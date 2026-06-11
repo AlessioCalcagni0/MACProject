@@ -25,8 +25,8 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://admin:postgres@/myappdb?host=/cloudsql/maccproject-9de7e:europe-west1:postgres-maccproject
-      FIREBASE_CREDENTIALS_PATH: /app/secrets/maccproject-9de7e-firebase-adminsdk-fbsvc-e89d93806d.json
+      DATABASE_URL: postgresql://admin:postgres@/myappdb?host=/cloudsql/maccproject-7f15c:europe-west1:postgres-maccproject
+      FIREBASE_CREDENTIALS_PATH: /app/secrets/maccproject-7f15c-firebase-adminsdk-fbsvc-e89d93806d.json
     ports:
       - "8000:8000"
     volumes:
