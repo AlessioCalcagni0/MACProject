@@ -79,7 +79,7 @@ Here is how the specific course requirements were fulfilled in this project:
 2. **Multi-user Support**: Implemented Firebase Authentication to allow secure user sign-ups, logins, and session management.
 3. **2D Graphics**: Developed custom 2D graphs within the Android app to visualize running performance metrics and weather trends over time.
 4. **Use of Sensors**: Utilized the device's Hardware Pedometer / Accelerometer to complement GPS tracking and ensure accurate step
-5. 5. **GPS**: Leveraged Android's Location Services (GPS) to track user coordinates in real-time and trace the run on the map.
+5. **GPS**: Leveraged Android's Location Services (GPS) to track user coordinates in real-time and trace the run on the map.
 6. **Camera & Image Processing**: Integrated the Android Camera API to allow users to snap photos during their run, associating those images with specific waypoints
 7. **Concurrency**: Used Kotlin Coroutines and ViewModel scopes on the frontend to ensure background location tracking and API calls do not block the main thread.
 8. **Additional Cloud Features**: Deployed the backend server using Google Cloud Run (and utilized Google Maps API for route rendering).
